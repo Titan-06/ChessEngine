@@ -18,6 +18,7 @@
 
 /* In this program, board means 128 size array, game means the 8x8 chess board*/
 uint8_t board[128];
+uint8_t lookup[240];
 /* Structs for the game*/
 struct gameState
 {
@@ -134,11 +135,43 @@ void initBoard()
         i++;
     }
 }
+void initLookup()
+{
+    for (int i = 0; i < 240; i++)
+    {
+        lookup[i] = 0;
+        if (i == 33 || i == -33 || i == 31 || i == -31)
+        {
+            lookup[i] |= KNIGHT;
+        }
+        if (i % 16 == 0)
+        {
+            lookup[i] |= ROOK;
+            lookup[i] |= QUEEN;
+        }
+        if ((i - 1) % 16 == 0 || (i + 1) % 16 == 0)
+        {
+            lookup[i] |= BISHOP;
+            lookup[i] |= QUEEN;
+        }
+        if (i == 16 || i == -16 || i == 17 || i == 15 || i == -17 || i == -15)
+        {
+            lookup[i] |= PAWN;
+            lookup[i] |= KING;
+        }
+    }
+}
 
 int main()
 {
+    char *s;
     initBoard();
-    GAMESTATE.player = 2;
+    initLookup();
     printBoard();
+    printf("AI: NO MOVEEEE\n");
+    printf("YOUR MOVE:");
+    scanf("%s", s);
+    printf("%s\n", s);
+    GAMESTATE.player = 2;
     return 0;
 }
