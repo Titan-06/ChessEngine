@@ -23,6 +23,8 @@ uint8_t lookup[240];
 struct gameState
 {
     uint8_t player; /* 1 for white and 2 for black */
+    int whiteScore;
+    int blackScore;
 };
 struct gameState GAMESTATE;
 /* To print the board*/
@@ -73,6 +75,7 @@ void printBoard()
     }
     printf("\x1b[7m  A B C D E F G H  \x1b[0m\n");
 }
+
 /* Helper functions for translating the board(0x88) */
 int in_bounds(uint8_t des)
 {
@@ -108,7 +111,96 @@ int boardToGame(uint8_t boardIndex)
     return (boardIndex + (boardIndex & 7)) >> 1;
 }
 
+int pointForPiece(uint8_t piece)
+{
+    switch (piece)
+    {
+    case PAWN:
+        return 1;
+    case ROOK:
+        return 5;
+    case KNIGHT:
+        return 3;
+    case BISHOP:
+        return 3;
+    case QUEEN:
+        return 9;
+    case KING:
+        return 999;
+    }
+}
+
+/* Translate the notation */
+uint8_t signToPiece(char sign)
+{
+    switch (sign)
+    {
+    case 'N':
+        return KNIGHT;
+    case 'K':
+        return KING;
+    case 'Q':
+        return QUEEN;
+    case 'B':
+        return BISHOP;
+    case 'R':
+        return ROOK;
+    }
+}
+int destSquare(int *piece, char *move)
+{
+    int len = strlen(move);
+    char file;
+    char rank;
+    switch (len)
+    {
+    case 2:
+        file = move[0] - 97;
+        rank = move[1] - 49;
+        *piece = PAWN;
+        return rankFileToBoard(rank, file);
+    case 3:
+        *piece = signToPiece(move[0]);
+        file = move[1] - 97;
+        rank = move[2] - 49;
+        return rankFileToBoard(rank, file);
+    default:
+        break;
+    }
+}
+
+/* Logic of the chess game */
+void movePiece(char *move)
+{
+    int i = 119;
+    int piece;
+    int dest = destSquare(&piece, move);
+    printf("%d\n", dest);
+    while (i >= 0)
+    {
+        int dist = dest - i;
+        printf("%d\n", dist);
+        if ((lookup[dist + 119] & piece))
+        {
+            board[dest] = board[i];
+            board[i] = 0;
+            break;
+        }
+
+        if (i % 8 == 0)
+        {
+            i -= 8;
+        }
+        i--;
+    }
+}
 /* Initializng the Game Board */
+void initGameState()
+{
+    GAMESTATE.player = 2;
+    GAMESTATE.blackScore = 0;
+    GAMESTATE.whiteScore = 0;
+}
 void initBoard()
 {
     int backpieces[8] = {ROOK, KNIGHT, BISHOP, QUEEN, KING, BISHOP, KNIGHT, ROOK};
@@ -140,7 +232,7 @@ void initLookup()
     for (int i = 0; i < 240; i++)
     {
         lookup[i] = 0;
-        if (i == 33 || i == -33 || i == 31 || i == -31)
+        if (i == 33 || i - 119 == -33 || i == 31 || i - 119 == -31)
         {
             lookup[i] |= KNIGHT;
         }
@@ -154,7 +246,7 @@ void initLookup()
             lookup[i] |= BISHOP;
             lookup[i] |= QUEEN;
         }
-        if (i == 16 || i == -16 || i == 17 || i == 15 || i == -17 || i == -15)
+        if (i == 16 || i - 119 == -16 || i == 17 || i == 15 || i - 119 == -17 || i - 119 == -15)
         {
             lookup[i] |= PAWN;
             lookup[i] |= KING;
@@ -171,7 +263,8 @@ int main()
     printf("AI: NO MOVEEEE\n");
     printf("YOUR MOVE:");
     scanf("%s", s);
+    movePiece(s);
+    printBoard();
     printf("%s\n", s);
-    GAMESTATE.player = 2;
     return 0;
 }
