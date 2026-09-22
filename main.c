@@ -26,6 +26,7 @@ struct gameState
     int whiteScore;
     int blackScore;
     int moves;
+    int enPassant_possible;
 };
 struct gameState GAMESTATE;
 /* To print the board*/
@@ -92,12 +93,12 @@ int rankFileToBoard(uint8_t rank, uint8_t file)
     return (16 * rank) + file;
 }
 
-int boardToRank(uint8_t boardIndex)
+int boardToFile(uint8_t boardIndex)
 {
     return boardIndex & 7;
 }
 
-int boardToFile(uint8_t boardIndex)
+int boardToRank(uint8_t boardIndex)
 {
     return boardIndex >> 4;
 }
@@ -220,32 +221,9 @@ int pathClear(int src, int dest)
 
 int legalMove(int srcSquare, int desSquare) // Return 1 if it is , Return 0 if its not
 {
-    if ((desSquare & 0x88))
-    {
-        printf("NOT inBOUNDS\n");
-        return 0;
-    }
 
     int distance = desSquare - srcSquare;
     int piece = board[srcSquare] & 0b11111100;
-    int playerSrc = board[srcSquare] & 0b00000011;
-
-    // To not let the player move other piece or capture its own
-    if (!(board[srcSquare] & GAMESTATE.player) || board[desSquare] & GAMESTATE.player)
-    {
-        return 0;
-    }
-
-    if (playerSrc == WHITE && distance < 0 && board[srcSquare] & PAWN)
-    {
-        printf("%d\n", board[srcSquare]);
-        return 0;
-    }
-    else if (playerSrc == BLACK && distance > 0 && board[srcSquare] & PAWN)
-    {
-        printf("%d\n", board[srcSquare]);
-        return 0;
-    }
 
     if (lookup[distance + 119] & piece)
     {
@@ -269,6 +247,40 @@ int legalMove(int srcSquare, int desSquare) // Return 1 if it is , Return 0 if i
     }
 }
 
+int specialMove(int srcSquare, int desSquare)
+{
+    int distance = desSquare - srcSquare;
+    int piece = board[srcSquare] & 0b11111100;
+
+    int srcRank = boardToRank(srcSquare);
+    printf("SPECIAL STEP %d %d \n", piece, srcRank);
+
+    if (piece == PAWN && (distance == 32 || distance == -32) && (srcRank == 1 || srcRank == 6))
+    { // Double Step of a pawn
+        printf("DOUBLE STEP\n");
+        board[desSquare] = board[srcSquare];
+        board[srcSquare] = 0;
+        GAMESTATE.enPassant_possible = desSquare;
+        return 1;
+    }
+    else if (piece == PAWN && (distance == -15 || distance == 15 || distance == 17 || distance == -17))
+    {
+        if (board[desSquare] & 0b11111100)
+        { // Diagonal Capture
+            board[desSquare] = board[srcSquare];
+            board[srcSquare] = 0;
+        }
+        else if (board[desSquare] == 0 && (board[srcSquare - 1] == GAMESTATE.enPassant_possible || board[srcSquare + 1] == GAMESTATE.enPassant_possible))
+        { // En Passant
+            board[GAMESTATE.enPassant_possible] = 0;
+            board[desSquare] = board[srcSquare];
+            board[srcSquare] = 0;
+
+            GAMESTATE.enPassant_possible = 0;
+        }
+    }
+}
+
 void movePiece(char *move)
 {
     int srcSquare;
@@ -278,13 +290,40 @@ void movePiece(char *move)
         printf("Couldn't Translate\n");
         return;
     }
-    if (!legalMove(srcSquare, desSquare))
+
+    int distance = desSquare - srcSquare;
+    int piece = board[srcSquare] & 0b11111100;
+    int playerSrc = board[srcSquare] & 0b00000011;
+    // To not let the player move other piece or capture its own
+    if (!(board[srcSquare] & GAMESTATE.player) || board[desSquare] & GAMESTATE.player)
     {
-        printf("NOT LEGAL\n");
         return;
     }
-    board[desSquare] = board[srcSquare];
-    board[srcSquare] = 0;
+
+    if (playerSrc == WHITE && distance < 0 && board[srcSquare] & PAWN)
+    {
+        printf("%d\n", board[srcSquare]);
+        return;
+    }
+    else if (playerSrc == BLACK && distance > 0 && board[srcSquare] & PAWN)
+    {
+        printf("%d\n", board[srcSquare]);
+        return;
+    }
+    if ((desSquare & 0x88)) // Check if the dest Square is OUT OF BOUNDS
+    {
+        printf("NOT inBOUNDS\n");
+        return;
+    }
+
+    if (legalMove(srcSquare, desSquare))
+    {
+        board[desSquare] = board[srcSquare];
+        board[srcSquare] = 0;
+    }
+    else if (specialMove(srcSquare, desSquare))
+    {
+    }
 
     GAMESTATE.player = (GAMESTATE.player == 2) ? 1 : 2;
     GAMESTATE.moves++;
@@ -296,6 +335,7 @@ void initGameState()
     GAMESTATE.blackScore = 0;
     GAMESTATE.whiteScore = 0;
     GAMESTATE.moves = 0;
+    GAMESTATE.enPassant_possible = 0;
 }
 void initBoard()
 {
@@ -323,6 +363,7 @@ void initBoard()
         i++;
     }
 }
+// Lookup function includes all the moves that a piece can do ( excluding the Special moves )
 void initLookup()
 {
     for (int i = 0; i < 240; i++)
