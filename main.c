@@ -20,20 +20,24 @@
 uint8_t board[128];
 uint8_t lookup[240];
 /* Structs for the game*/
+struct player
+{
+    int score;
+    int castling_rights[2]; /* 0 for short and 1 for long */
+};
 struct gameState
 {
-    uint8_t player; /* 1 for white and 2 for black */
-    int whiteScore;
-    int blackScore;
+    uint8_t current_player;   /* 1 for white and 2 for black */
+    struct player players[2]; /* 0 for white and 1 for black*/
     int moves;
-    int enPassant_possible;
+    int enPassant_square; /* NEgative if not possible, otherwise location of some square*/
 };
 struct gameState GAMESTATE;
 /* To print the board*/
 void printBoard()
 {
     printf("\x1b[7m  A B C D E F G H  \x1b[0m\n");
-    for (int i = 0; i < 8; i++)
+    for (int i = 7; i >= 0; i--)
     {
         printf("\x1b[7m%d\x1b[0m ", i + 1);
         for (int j = 0; j < 8; j++)
@@ -165,7 +169,7 @@ int translateNotation(char *move, int *src, int *dest) // Returns 1 normally, 0 
     rank = move[3] - 49;
     *dest = rankFileToBoard(rank, file);
 
-    printf("Src: %d Des: %d Next Player: %d\n", *src, *dest, GAMESTATE.player);
+    printf("Src: %d Des: %d Player: %d\n", *src, *dest, GAMESTATE.current_player);
 
     if (len == 4)
     {
@@ -255,30 +259,62 @@ int specialMove(int srcSquare, int desSquare)
     int srcRank = boardToRank(srcSquare);
     printf("SPECIAL STEP %d %d \n", piece, srcRank);
 
-    if (piece == PAWN && (distance == 32 || distance == -32) && (srcRank == 1 || srcRank == 6))
-    { // Double Step of a pawn
-        printf("DOUBLE STEP\n");
-        board[desSquare] = board[srcSquare];
-        board[srcSquare] = 0;
-        GAMESTATE.enPassant_possible = desSquare;
-        return 1;
-    }
-    else if (piece == PAWN && (distance == -15 || distance == 15 || distance == 17 || distance == -17))
+    switch (piece)
     {
-        if (board[desSquare] & 0b11111100)
-        { // Diagonal Capture
+    case PAWN:
+        if ((distance == 32 || distance == -32) && (srcRank == 1 || srcRank == 6))
+        { // Double Step of a pawn
+            printf("DOUBLE STEP\n");
             board[desSquare] = board[srcSquare];
             board[srcSquare] = 0;
+            GAMESTATE.enPassant_square = desSquare;
+            return 1;
         }
-        else if (board[desSquare] == 0 && (board[srcSquare - 1] == GAMESTATE.enPassant_possible || board[srcSquare + 1] == GAMESTATE.enPassant_possible))
-        { // En Passant
-            board[GAMESTATE.enPassant_possible] = 0;
+        else if (distance == -15 || distance == 15 || distance == 17 || distance == -17)
+        {
+            if (board[desSquare])
+            { // Diagonal Capture
+                board[desSquare] = board[srcSquare];
+                board[srcSquare] = 0;
+                return 1;
+            }
+            else if (GAMESTATE.enPassant_square >= 0 && (board[srcSquare - 1] == GAMESTATE.enPassant_square || board[srcSquare + 1] == GAMESTATE.enPassant_square))
+            { // En Passant
+                board[GAMESTATE.enPassant_square] = 0;
+                board[desSquare] = board[srcSquare];
+                board[srcSquare] = 0;
+
+                GAMESTATE.enPassant_square = -1;
+                return 1;
+            }
+        }
+        break;
+    case KING:
+        if (distance == 2 && pathClear(srcSquare, srcSquare + 3))
+        {
+            // King interchange
             board[desSquare] = board[srcSquare];
             board[srcSquare] = 0;
 
-            GAMESTATE.enPassant_possible = 0;
+            // Rook Interchange
+            board[desSquare - 1] = board[srcSquare + 3];
+            board[srcSquare + 3] = 0;
+            return 1;
         }
+        else if (distance == -2 && pathClear(srcSquare, srcSquare - 4))
+        {
+            // King interchange
+            board[desSquare] = board[srcSquare];
+            board[srcSquare] = 0;
+
+            // Rook Interchange
+            board[desSquare + 1] = board[srcSquare - 4];
+            board[srcSquare - 4] = 0;
+            return 1;
+        }
+        break;
     }
+    return 0;
 }
 
 void movePiece(char *move)
@@ -295,8 +331,9 @@ void movePiece(char *move)
     int piece = board[srcSquare] & 0b11111100;
     int playerSrc = board[srcSquare] & 0b00000011;
     // To not let the player move other piece or capture its own
-    if (!(board[srcSquare] & GAMESTATE.player) || board[desSquare] & GAMESTATE.player)
+    if (!(board[srcSquare] & GAMESTATE.current_player) || board[desSquare] & GAMESTATE.current_player)
     {
+        printf("LMAO YOURN OWN SHI\n");
         return;
     }
 
@@ -321,21 +358,47 @@ void movePiece(char *move)
         board[desSquare] = board[srcSquare];
         board[srcSquare] = 0;
     }
-    else if (specialMove(srcSquare, desSquare))
+    else if (!specialMove(srcSquare, desSquare))
     {
+        printf("NOT SPECIAL MOVE EITHER\n");
     }
 
-    GAMESTATE.player = (GAMESTATE.player == 2) ? 1 : 2;
+    /* Remove castling rights */
+    if (piece == KING)
+    {
+        GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[0] = 0;
+        GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[1] = 0;
+    }
+    else if (piece == ROOK)
+    {
+        int file = boardToFile(srcSquare);
+        if (file == 0)
+        {
+            GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[1] = 0;
+        }
+        else if (file == 7)
+        {
+            GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[0] = 0;
+        }
+    }
+    GAMESTATE.current_player = (GAMESTATE.current_player == 2) ? 1 : 2;
     GAMESTATE.moves++;
 }
 /* Initializng the Game Board */
 void initGameState()
 {
-    GAMESTATE.player = 1;
-    GAMESTATE.blackScore = 0;
-    GAMESTATE.whiteScore = 0;
+    GAMESTATE.current_player = 1;
+
+    GAMESTATE.players[0].castling_rights[0] = 1;
+    GAMESTATE.players[0].castling_rights[1] = 1;
+    GAMESTATE.players[0].score = 0;
+
+    GAMESTATE.players[1].castling_rights[0] = 1;
+    GAMESTATE.players[1].castling_rights[1] = 1;
+    GAMESTATE.players[1].score = 0;
+
     GAMESTATE.moves = 0;
-    GAMESTATE.enPassant_possible = 0;
+    GAMESTATE.enPassant_square = -1;
 }
 void initBoard()
 {
@@ -406,7 +469,7 @@ int main()
     while (1)
     {
         printBoard();
-        printf("%d MOVE:", GAMESTATE.player);
+        printf("%d MOVE:", GAMESTATE.current_player);
         scanf("%s", s);
         movePiece(s);
     }
