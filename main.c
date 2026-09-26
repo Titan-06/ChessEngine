@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Testing git push from the fedora OS now
+
 /* These represnts each bit of a byte, The last 2  represents black and white
     and the first 6 represnts each pieces*/
 
@@ -460,7 +462,7 @@ void initLookup()
 
 int main()
 {
-    char *s;
+    char s[16];
     initGameState();
     initBoard();
     initLookup();
