@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Testing git push from the fedora OS now
 
 /* These represnts each bit of a byte, The last 2  represents black and white
     and the first 6 represnts each pieces*/
@@ -35,6 +34,44 @@ struct gameState
     int enPassant_square; /* NEgative if not possible, otherwise location of some square*/
 };
 struct gameState GAMESTATE;
+
+/* Structs to make the history */
+struct historyUnit{
+    struct gameState gamestate;
+    uint8_t board[128];
+    struct historyUnit *previous;
+};
+
+struct history{
+    int moveHistorySize;
+    struct historyUnit *latest;
+};
+
+struct history HISTORY;
+
+/* Helper functions to manage history */
+
+void addMoveHistory(struct gameState gamedata, uint8_t board[128]){
+    struct historyUnit *newUnit = malloc(sizeof(struct historyUnit));
+
+    newUnit->gamestate = gamedata;
+    memcpy(newUnit,board,128 * sizeof(int));
+
+    struct historyUnit *temp = HISTORY.latest;
+
+    HISTORY.latest = newUnit;
+    newUnit->previous = HISTORY.latest;
+
+    HISTORY.moveHistorySize++;
+
+}
+void popMoveHistory(){
+    struct historyUnit *temp = HISTORY.latest->previous;
+    free(HISTORY.latest);
+    HISTORY.latest = temp;
+    HISTORY.moveHistorySize--;
+}
+
 /* To print the board*/
 void printBoard()
 {
@@ -401,6 +438,9 @@ void initGameState()
 
     GAMESTATE.moves = 0;
     GAMESTATE.enPassant_square = -1;
+
+    HISTORY.latest = NULL;
+    HISTORY.moveHistorySize = 0;
 }
 void initBoard()
 {
