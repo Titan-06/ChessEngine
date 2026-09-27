@@ -25,6 +25,7 @@ struct player
 {
     int score;
     int castling_rights[2]; /* 0 for short and 1 for long */
+    int kingSquare;
 };
 struct gameState
 {
@@ -55,7 +56,7 @@ void addMoveHistory(struct gameState gamedata, uint8_t board[128]){
     struct historyUnit *newUnit = malloc(sizeof(struct historyUnit));
 
     newUnit->gamestate = gamedata;
-    memcpy(newUnit,board,128 * sizeof(int));
+    memcpy(newUnit->board,board,128);
 
     struct historyUnit *temp = HISTORY.latest;
 
@@ -223,10 +224,8 @@ int translateNotation(char *move, int *src, int *dest) // Returns 1 normally, 0 
         return 0;
     }
 }
-
 /* Logic of the chess game */
-int pathClear(int src, int dest)
-{
+int square_obstruct(int src, int dest){
     int distance = dest - src;
     // Get the direction
     int dir = (distance < 0) ? -1 : 1;
@@ -253,13 +252,24 @@ int pathClear(int src, int dest)
     src += walk;
     while (src != dest)
     {
+        if(src & 0x88){
+            return -1;
+        }
         if (board[src] != 0)
         {
-            return 0;
+            return src;
         }
         src += walk;
     }
-    return 1;
+    return -1;
+}
+int pathClear(int src, int dest)
+{
+    int squareObstruct = square_obstruct(src,dest);
+    if(squareObstruct == -1){
+        return 1;
+    }
+    return 0;
 }
 
 int legalMove(int srcSquare, int desSquare) // Return 1 if it is , Return 0 if its not
@@ -356,8 +366,50 @@ int specialMove(int srcSquare, int desSquare)
     return 0;
 }
 
+/* Checking Check/Checkmate */
+int check_attacked(int src_square){
+    // To check if knight is attcking 
+    int horseySteps[] = {33,-33,31,-31};
+    for(int i = 0; i < 4; i++){
+        int desSquare = src_square + horseySteps[i];
+        if((board[desSquare] & KNIGHT) && (board[desSquare] & GAMESTATE.current_player)){
+            return 1;
+        }
+    }
+    // To check if the other pieces are attacking in all 8 dir
+    int dir[] = {-17,17,15,-15,1,-1,16,-16};
+    for(int i = 0; i < 8 ; i++){
+        int dest = src_square + (dir[i] * 8);
+        int squareObstruct = square_obstruct(src_square, dest);
+        int piece = board[squareObstruct] & 0b11111100;
+        if(squareObstruct != -1 && (board[squareObstruct] & GAMESTATE.current_player)){
+            switch(i){
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                    if(piece == BISHOP || piece == QUEEN || piece == PAWN || piece == KING){
+                        return 1;
+                    }
+                    break;
+                case 4:
+                case 5:
+                case 6:
+                case 7:
+                    if(piece == ROOK || piece == KING){
+                        return 1;
+                    }
+                    break;
+                    
+            }
+        }
+    }
+    return 0;
+}
+/* MOVEEEEE */
 void movePiece(char *move)
 {
+    addMoveHistory(GAMESTATE,board);
     int srcSquare;
     int desSquare;
     if (!translateNotation(move, &srcSquare, &desSquare))
@@ -420,8 +472,18 @@ void movePiece(char *move)
             GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[0] = 0;
         }
     }
+    int previous_player = GAMESTATE.current_player;
     GAMESTATE.current_player = (GAMESTATE.current_player == 2) ? 1 : 2;
     GAMESTATE.moves++;
+
+    // Move was made, now check if that put the king under check or nah
+    if(check_attacked(GAMESTATE.players[previous_player - 1 ].kingSquare)){
+        GAMESTATE = HISTORY.latest->gamestate;
+        memcpy(board,HISTORY.latest->board,128);
+        popMoveHistory;
+        printf("KING UNDER ATTaCK\n");
+    }
+
 }
 /* Initializng the Game Board */
 void initGameState()
@@ -431,10 +493,11 @@ void initGameState()
     GAMESTATE.players[0].castling_rights[0] = 1;
     GAMESTATE.players[0].castling_rights[1] = 1;
     GAMESTATE.players[0].score = 0;
+    GAMESTATE.players[0].kingSquare = 4;
 
     GAMESTATE.players[1].castling_rights[0] = 1;
     GAMESTATE.players[1].castling_rights[1] = 1;
-    GAMESTATE.players[1].score = 0;
+    GAMESTATE.players[1].kingSquare = 116;
 
     GAMESTATE.moves = 0;
     GAMESTATE.enPassant_square = -1;
