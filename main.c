@@ -367,13 +367,15 @@ int specialMove(int srcSquare, int desSquare)
 }
 
 /* Checking Check/Checkmate */
-int check_attacked(int src_square){
+
+// PARAMETERS: Square which you want to check, Attacked by who?
+int check_attacked(int src_square, int enemy_player){
     // To check if knight is attcking 
     int horseySteps[] = {33,-33,31,-31};
     for(int i = 0; i < 4; i++){
         int desSquare = src_square + horseySteps[i];
-        if((board[desSquare] & KNIGHT) && (board[desSquare] & GAMESTATE.current_player)){
-            return 1;
+        if((board[desSquare] & KNIGHT) && (board[desSquare] & enemy_player)){
+            return desSquare;
         }
     }
     // To check if the other pieces are attacking in all 8 dir
@@ -381,15 +383,15 @@ int check_attacked(int src_square){
     for(int i = 0; i < 8 ; i++){
         int dest = src_square + (dir[i] * 8);
         int squareObstruct = square_obstruct(src_square, dest);
-        int piece = board[squareObstruct] & 0b11111100;
-        if(squareObstruct != -1 && (board[squareObstruct] & GAMESTATE.current_player)){
+        if(squareObstruct != -1 && (board[squareObstruct] & enemy_player)){
+            int piece = board[squareObstruct] & 0b11111100;
             switch(i){
                 case 0:
                 case 1:
                 case 2:
                 case 3:
                     if(piece == BISHOP || piece == QUEEN || piece == PAWN || piece == KING){
-                        return 1;
+                        return squareObstruct;
                     }
                     break;
                 case 4:
@@ -397,27 +399,19 @@ int check_attacked(int src_square){
                 case 6:
                 case 7:
                     if(piece == ROOK || piece == KING){
-                        return 1;
+                        return squareObstruct;
                     }
                     break;
                     
             }
         }
     }
-    return 0;
+    return -1;
 }
 /* MOVEEEEE */
-void movePiece(char *move)
+int movePiece(int srcSquare, int desSquare)
 {
     addMoveHistory(GAMESTATE,board);
-    int srcSquare;
-    int desSquare;
-    if (!translateNotation(move, &srcSquare, &desSquare))
-    {
-        printf("Couldn't Translate\n");
-        return;
-    }
-
     int distance = desSquare - srcSquare;
     int piece = board[srcSquare] & 0b11111100;
     int playerSrc = board[srcSquare] & 0b00000011;
@@ -425,23 +419,23 @@ void movePiece(char *move)
     if (!(board[srcSquare] & GAMESTATE.current_player) || board[desSquare] & GAMESTATE.current_player)
     {
         printf("LMAO YOURN OWN SHI\n");
-        return;
+        return 0;
     }
 
     if (playerSrc == WHITE && distance < 0 && board[srcSquare] & PAWN)
     {
         printf("%d\n", board[srcSquare]);
-        return;
+        return 0;
     }
     else if (playerSrc == BLACK && distance > 0 && board[srcSquare] & PAWN)
     {
         printf("%d\n", board[srcSquare]);
-        return;
+        return 0;
     }
     if ((desSquare & 0x88)) // Check if the dest Square is OUT OF BOUNDS
     {
         printf("NOT inBOUNDS\n");
-        return;
+        return 0;
     }
 
     if (legalMove(srcSquare, desSquare))
@@ -453,38 +447,55 @@ void movePiece(char *move)
     {
         printf("NOT SPECIAL MOVE EITHER\n");
     }
-
-    /* Remove castling rights */
-    if (piece == KING)
-    {
-        GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[0] = 0;
-        GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[1] = 0;
-    }
-    else if (piece == ROOK)
-    {
-        int file = boardToFile(srcSquare);
-        if (file == 0)
-        {
-            GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[1] = 0;
-        }
-        else if (file == 7)
-        {
-            GAMESTATE.players[GAMESTATE.current_player - 1].castling_rights[0] = 0;
-        }
-    }
     int previous_player = GAMESTATE.current_player;
     GAMESTATE.current_player = (GAMESTATE.current_player == 2) ? 1 : 2;
     GAMESTATE.moves++;
 
     // Move was made, now check if that put the king under check or nah
-    if(check_attacked(GAMESTATE.players[previous_player - 1 ].kingSquare)){
+    if(check_attacked(GAMESTATE.players[previous_player - 1 ].kingSquare,GAMESTATE.current_player) != -1){
         GAMESTATE = HISTORY.latest->gamestate;
         memcpy(board,HISTORY.latest->board,128);
         popMoveHistory;
         printf("KING UNDER ATTaCK\n");
     }
 
+    return piece;
 }
+void evaluate_castling_rights(int piece,int player, int srcSquare){
+    if (piece == KING)
+    {
+        GAMESTATE.players[player - 1].castling_rights[0] = 0;
+        GAMESTATE.players[player - 1].castling_rights[1] = 0;
+    }
+    else if (piece == ROOK)
+    {
+        int file = boardToFile(srcSquare);
+        if (file == 0)
+        {
+            GAMESTATE.players[player - 1].castling_rights[1] = 0;
+        }
+        else if (file == 7)
+        {
+            GAMESTATE.players[player - 1].castling_rights[0] = 0;
+        }
+    }
+}
+void make_move(char *s){
+    int srcSquare;
+    int desSquare;
+    if (!translateNotation(s, &srcSquare, &desSquare))
+    {
+        printf("Couldn't Translate\n");
+        return;
+    }
+    int piece = movePiece(srcSquare,desSquare);
+    if(!piece){
+        return;
+    }
+    int player_was = (GAMESTATE.current_player == 2) ? 1 : 2;
+    evaluate_castling_rights(piece,player_was,srcSquare);
+}
+;
 /* Initializng the Game Board */
 void initGameState()
 {
@@ -576,7 +587,7 @@ int main()
         printBoard();
         printf("%d MOVE:", GAMESTATE.current_player);
         scanf("%s", s);
-        movePiece(s);
+        make_move(s);
     }
     return 0;
 }
