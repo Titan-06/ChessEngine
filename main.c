@@ -195,6 +195,8 @@ uint8_t signToPiece(char sign)
         return BISHOP;
     case 'r':
         return ROOK;
+    default:
+        return 0;
     }
 }
 int translateNotation(char *move, int *src, int *dest) // Returns 1 normally, 0 if some error and piece value if promotion
@@ -305,7 +307,6 @@ int legalMove(int srcSquare, int desSquare) // Return 1 if it is , Return 0 if i
     }
     else
     {
-        printf("NOT LOOKEDUP\n");
         return 0;
     }
 }
@@ -319,14 +320,12 @@ int specialMove(int srcSquare, int desSquare)
 
     int srcRank = boardToRank(srcSquare);
     int start_rank = (player == WHITE)? 1: 6; 
-    printf("SPECIAL STEP %d %d \n", piece, srcRank);
 
     switch (piece)
     {
     case PAWN:
         if ((distance == 32 || distance == -32) && (srcRank == start_rank) && board[srcSquare + distance/2] == 0 && board[desSquare]==0)
         { // Double Step of a pawn
-            printf("DOUBLE STEP\n");
             board[desSquare] = board[srcSquare];
             board[srcSquare] = 0;
             GAMESTATE.enPassant_square = desSquare;
@@ -340,7 +339,7 @@ int specialMove(int srcSquare, int desSquare)
                 board[srcSquare] = 0;
                 return 1;
             }
-            else if (GAMESTATE.enPassant_square >= 0 && (board[srcSquare - 1] == GAMESTATE.enPassant_square || board[srcSquare + 1] == GAMESTATE.enPassant_square))
+            else if (GAMESTATE.enPassant_square != -1 && ((srcSquare - 1) == GAMESTATE.enPassant_square || (srcSquare + 1) == GAMESTATE.enPassant_square))
             { // En Passant
                 board[GAMESTATE.enPassant_square] = 0;
                 board[desSquare] = board[srcSquare];
@@ -352,7 +351,7 @@ int specialMove(int srcSquare, int desSquare)
         }
         break;
     case KING:
-        if (distance == 2 && pathClear(srcSquare, srcSquare + 3))
+        if (distance == 2 && pathClear(srcSquare, srcSquare + 3) && GAMESTATE.players[player-1].castling_rights[0] == 1)
         {
             // King interchange
             board[desSquare] = board[srcSquare];
@@ -363,7 +362,7 @@ int specialMove(int srcSquare, int desSquare)
             board[srcSquare + 3] = 0;
             return 1;
         }
-        else if (distance == -2 && pathClear(srcSquare, srcSquare - 4))
+        else if (distance == -2 && pathClear(srcSquare, srcSquare - 4) && GAMESTATE.players[player-1].castling_rights[1] == 1)
         {
             // King interchange
             board[desSquare] = board[srcSquare];
@@ -437,58 +436,6 @@ int check_attacked(int src_square, int enemy_player){
     return -1;
 }
 /* MOVEEEEE */
-int movePiece(int srcSquare, int desSquare)
-{
-    addMoveHistory(GAMESTATE,board);
-    int distance = desSquare - srcSquare;
-    int piece = board[srcSquare] & 0b11111100;
-    int playerSrc = board[srcSquare] & 0b00000011;
-    // To not let the player move other piece or capture its own
-    if (!(board[srcSquare] & GAMESTATE.current_player) || board[desSquare] & GAMESTATE.current_player)
-    {
-        return 0;
-    }
-
-    if (playerSrc == WHITE && distance < 0 && board[srcSquare] & PAWN)
-    {
-        printf("%d\n", board[srcSquare]);
-        return 0;
-    }
-    else if (playerSrc == BLACK && distance > 0 && board[srcSquare] & PAWN)
-    {
-        printf("%d\n", board[srcSquare]);
-        return 0;
-    }
-    if ((desSquare & 0x88)) // Check if the dest Square is OUT OF BOUNDS
-    {
-        return 0;
-    }
-
-    if (legalMove(srcSquare, desSquare))
-    {
-        board[desSquare] = board[srcSquare];
-        board[srcSquare] = 0;
-    }
-    else if (!specialMove(srcSquare, desSquare))
-    {
-        return 0;
-    }
-
-    if(piece == KING){
-        GAMESTATE.players[GAMESTATE.current_player - 1 ].kingSquare = desSquare;
-    }
-    int previous_player = GAMESTATE.current_player;
-    GAMESTATE.current_player = (GAMESTATE.current_player == 2) ? 1 : 2;
-    GAMESTATE.moves++;
-
-    // Move was made, now check if that put the king under check or nah
-    int state = check_attacked(GAMESTATE.players[previous_player - 1 ].kingSquare,GAMESTATE.current_player);
-    if(state != -1){
-        return 0;
-    }
-
-    return piece;
-}
 void evaluate_castling_rights(int piece,int player, int srcSquare){
     if (piece == KING)
     {
@@ -507,6 +454,61 @@ void evaluate_castling_rights(int piece,int player, int srcSquare){
             GAMESTATE.players[player - 1].castling_rights[0] = 0;
         }
     }
+}
+
+int movePiece(int srcSquare, int desSquare)
+{
+    addMoveHistory(GAMESTATE,board);
+    int distance = desSquare - srcSquare;
+    int piece = board[srcSquare] & 0b11111100;
+    int playerSrc = board[srcSquare] & 0b00000011;
+    // To not let the player move other piece or capture its own
+    if (!(board[srcSquare] & GAMESTATE.current_player) || board[desSquare] & GAMESTATE.current_player)
+    {
+        return 0;
+    }
+
+    if (playerSrc == WHITE && distance < 0 && board[srcSquare] & PAWN)
+    {
+        return 0;
+    }
+    else if (playerSrc == BLACK && distance > 0 && board[srcSquare] & PAWN)
+    {
+        return 0;
+    }
+    if ((desSquare & 0x88)) // Check if the dest Square is OUT OF BOUNDS
+    {
+        return 0;
+    }
+
+    if (legalMove(srcSquare, desSquare))
+    {
+        board[desSquare] = board[srcSquare];
+        board[srcSquare] = 0;
+    }
+    else if (!specialMove(srcSquare, desSquare))
+    {
+        return 0;
+    }
+
+    if((GAMESTATE.enPassant_square != -1) && !(board[GAMESTATE.enPassant_square] & playerSrc)){
+        GAMESTATE.enPassant_square = -1;
+    }
+
+    if(piece == KING){
+        GAMESTATE.players[GAMESTATE.current_player - 1 ].kingSquare = desSquare;
+    }
+    int previous_player = GAMESTATE.current_player;
+    GAMESTATE.current_player = (GAMESTATE.current_player == 2) ? 1 : 2;
+    GAMESTATE.moves++;
+
+    // Move was made, now check if that put the king under check or nah
+    int state = check_attacked(GAMESTATE.players[previous_player - 1 ].kingSquare,GAMESTATE.current_player);
+    if(state != -1){
+        return 0;
+    }
+    evaluate_castling_rights(piece,previous_player,srcSquare);
+    return piece;
 }
 
 int has_legal_move(int player_num){
@@ -534,30 +536,92 @@ int evaluate_checkmate_stalemate(){ // 0 for nothing, 1 for checkmate, 2 for sta
         return 2;
     }
 
-};
+}
+int pawn_promotion_condition(int src,int des){
+    int cell = board[src];
+    int piece = cell & 0b11111100;
+    int player = cell & 0b00000011;
+    int rankDest = boardToRank(des);
+    if(piece == PAWN && ((rankDest == 0 && player == BLACK) || (rankDest == 7 && player == WHITE))){
+        return 1;
+    }
+    return 0;
+}
+// THE DEBUG PERFT FUNCTION
 
+int generate_legal_moves(int src_moves[],int des_moves[]){
+    int moves = 0;
+    for(int src = 0; src < 128; src++){
+        if((src & 0x88)) continue;
+        for(int dest= 0; dest < 128; dest++){
+            if((dest & 0x88) || dest == src) continue;
+            int legal = movePiece(src,dest);
+            undo_last_move();
+            if(legal){
+                src_moves[moves] = src;
+                des_moves[moves] = dest;
+                moves++;
+            }
+        }
+    }
+    return moves;
+}
 
+unsigned long long int perft(int depth){
+    int src_moves[256];
+    int des_moves[256];
+    int n_moves,i;
+    unsigned long long int nodes = 0;
+
+    if(depth == 0){
+        return 1ULL;
+    }
+
+    n_moves = generate_legal_moves(src_moves,des_moves);
+    for(i = 0; i < n_moves; i++){
+        int pawn_promotiuon = pawn_promotion_condition(src_moves[i],des_moves[i]);
+        movePiece(src_moves[i],des_moves[i]);
+        if(pawn_promotiuon){
+            int player = board[des_moves[i]] & 0b00000011;
+            int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
+            for(int j = 0 ; j < 4; j++){
+                board[des_moves[i]] = (pieces[j] | player);
+                nodes += perft(depth -1);
+            }
+        }else{
+            nodes += perft(depth -1);
+        }
+        undo_last_move();
+        
+    }
+    return nodes;
+}
 
 // The Main Move Function 
 void make_move(char *s){
     int srcSquare;
     int desSquare;
-    if (!translateNotation(s, &srcSquare, &desSquare))
-    {
+    int translate = translateNotation(s, &srcSquare, &desSquare);
+    int pawn_promotion = pawn_promotion_condition(srcSquare,desSquare);
+
+    if(translate == 0){
         printf("Couldn't Translate\n");
         return;
     }
     int piece = movePiece(srcSquare,desSquare);
     if(!piece){
-        GAMESTATE = HISTORY.latest->gamestate;
-        memcpy(board,HISTORY.latest->board,128);
-        popMoveHistory();
+        undo_last_move();
         return;
     }else{
+        if(pawn_promotion && translate > 1){
+            int player = board[desSquare] & 0b00000011;
+            board[desSquare] = (translate | player);
+        }
         popMoveHistory();
+        return;
     }
-    int player_was = (GAMESTATE.current_player == 2) ? 1 : 2;
-    evaluate_castling_rights(piece,player_was,srcSquare);
+        
+    
 }
 ;
 /* Initializng the Game Board */
@@ -648,6 +712,7 @@ int main()
     /* Make a Loop here to move both */
     while (1)
     {
+        printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(2));
         int state = evaluate_checkmate_stalemate();
         if(state == 1){
             printf("CHECKMATE\n");
