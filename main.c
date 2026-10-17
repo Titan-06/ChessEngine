@@ -54,12 +54,12 @@ struct history{
 struct history HISTORY;
 /* Weights for all pieces*/
 enum weights{
-    kingWt = 200,
-    queenWt = 9,
-    rookWt = 5,
-    bishopWt = 3,
-    knightWt = 3,
-    pawnWt = 1,
+    kingWt = 999,
+    queenWt = 90,
+    rookWt = 50,
+    bishopWt = 30,
+    knightWt = 30,
+    pawnWt = 10,
 
 };
 /* Weight for the squares in each piece */
@@ -248,24 +248,6 @@ int boardToGame(uint8_t boardIndex)
     return (boardIndex + (boardIndex & 7)) >> 1;
 }
 
-int pointForPiece(uint8_t piece)
-{
-    switch (piece)
-    {
-    case PAWN:
-        return 1;
-    case ROOK:
-        return 5;
-    case KNIGHT:
-        return 3;
-    case BISHOP:
-        return 3;
-    case QUEEN:
-        return 9;
-    case KING:
-        return 999;
-    }
-}
 
 /* Translate the notation */
 uint8_t signToPiece(char sign)
@@ -550,7 +532,8 @@ int specialMove(int srcSquare, int desSquare)
             }
         }
         break;
-    case KING:
+    case KING: // Castle
+        if(check_attacked(desSquare,opponent) != -1) return 0;
         if (distance == 2 && pathClear(srcSquare, srcSquare + 3) && GAMESTATE.players[player-1].castling_rights[0] == 1)
         {
             // King interchange
@@ -747,8 +730,8 @@ unsigned long long int perft(int depth){
 }
 /* Nega maxxing*/
 int evaluate_score(){
-    int square_wt = 6;
-    int piece_wt = 10;
+    int square_wt = 4;
+    int piece_wt = 5;
 
     int player = (GAMESTATE.current_player == 1) ? 1 : -1;
 
@@ -827,36 +810,31 @@ void generate_ai_move(int depth){
     for(int i = 0 ; i < n_moves; i++){
         if(!(board[src_moves[i]] & GAMESTATE.current_player)) continue;
 
-        for(int i = 0; i < n_moves ; i++){
-            if(!(board[src_moves[i]] & GAMESTATE.current_player)) continue;
-
-            int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
-            movePiece(src_moves[i],des_moves[i]);
-            if(pawn_promotion){
-                int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
-                for(int j = 0 ; j < 4; j++){
-                    board[des_moves[i]] = (pieces[j] | GAMESTATE.current_player);
-                    score = -negamax(depth - 1);
-                    if(score > max){ 
-                        promotion_piece = pieces[j];
-                        max = score;
-                        max_src_move = src_moves[i];
-                        max_des_move = des_moves[i];
-                    };
-                }
-            }else{
+        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+        movePiece(src_moves[i],des_moves[i]);
+        if(pawn_promotion){
+            int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
+            for(int j = 0 ; j < 4; j++){
+                board[des_moves[i]] = (pieces[j] | GAMESTATE.current_player);
                 score = -negamax(depth - 1);
-                if(score > max){
-                    promotion_piece = 0; 
+                if(score > max){ 
+                    promotion_piece = pieces[j];
                     max = score;
                     max_src_move = src_moves[i];
                     max_des_move = des_moves[i];
                 };
             }
+        }else{
+            score = -negamax(depth - 1);
+            if(score > max){
+                promotion_piece = 0; 
+                max = score;
+                    max_src_move = src_moves[i];
+                    max_des_move = des_moves[i];
+                };
+            }
         
-            undo_last_move();
-            
-        }
+        undo_last_move(); 
     }
 
     movePiece(max_src_move,max_des_move);
@@ -961,7 +939,7 @@ int main()
         //Play Against AI
         while (1)
         {
-            printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(2));
+            printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(4));
             printf("Square Score: %d Piece Score : %d\n",GAMESTATE.square_score,GAMESTATE.piece_score);
             int state = evaluate_checkmate_stalemate();
             if(state == 1){
@@ -977,14 +955,14 @@ int main()
                 scanf("%s", s);
                 make_move(s);
             }else{
-                generate_ai_move(3);
+                generate_ai_move(4);
             }
             
         }
     }else{
         while (1)
         {
-            printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(2));
+            printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(4));
             printf("Square Score: %d Piece Score : %d\n",GAMESTATE.square_score,GAMESTATE.piece_score);
             int state = evaluate_checkmate_stalemate();
             if(state == 1){
