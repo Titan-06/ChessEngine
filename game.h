@@ -3,10 +3,11 @@
 
 #include "defs.h"
 #include "engine.h"
+
+
 /* Helper functions to manage history */
-void addMoveHistory(struct gameState gamedata, uint8_t board[128]);
-void popMoveHistory();
-void undo_last_move();
+void save_last_move(struct gameState *prev_state, int prev_board[128]);
+void undo_last_move(struct gameState *prev_state, int prev_board[128]);
 
 /* Printing the board in the terminal */
 void printBoard();

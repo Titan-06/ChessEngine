@@ -44,18 +44,5 @@ struct gameState
 
 extern struct gameState GAMESTATE;
 
-/* Structs to make the history (to make/unmake move)*/
-struct historyUnit{
-    struct gameState gamestate;
-    uint8_t board[128];
-    struct historyUnit *previous;
-};
-
-struct history{
-    int moveHistorySize;
-    struct historyUnit *latest;
-};
-
-extern struct history HISTORY;
 
 #endif

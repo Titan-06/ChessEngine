@@ -1,31 +1,14 @@
 #include "game.h"
 
-/* Helper functions to manage history */
+/* Helper functions to manage move history */
 
-void addMoveHistory(struct gameState gamedata, uint8_t board[128]){
-    struct historyUnit *newUnit = malloc(sizeof(struct historyUnit));
-
-    newUnit->gamestate = gamedata;
-    memcpy(newUnit->board,board,128);
-
-    struct historyUnit *temp = HISTORY.latest;
-
-    HISTORY.latest = newUnit;
-    newUnit->previous = temp;
-
-    HISTORY.moveHistorySize++;
-
+void save_last_move(struct gameState *prev_state, int prev_board[128]){
+    *prev_state = GAMESTATE;
+    memcpy(prev_board,board,128);
 }
-void popMoveHistory(){
-    struct historyUnit *temp = HISTORY.latest->previous;
-    free(HISTORY.latest);
-    HISTORY.latest = temp;
-    HISTORY.moveHistorySize--;
-}
-void undo_last_move(){
-    GAMESTATE = HISTORY.latest->gamestate;
-    memcpy(board,HISTORY.latest->board,128);
-    popMoveHistory();
+void undo_last_move(struct gameState *prev_state, int prev_board[128]){
+    GAMESTATE = *prev_state;
+    memcpy(board,prev_board,128);
 }
 
 /* Helper functions for translating the board(0x88) */
@@ -403,7 +386,6 @@ void evaluate_castling_rights(int piece,int player, int srcSquare){ // Just a ch
 
 int movePiece(int srcSquare, int desSquare) // Actually moves the piece on the board after checking if its valid or not
 {
-    addMoveHistory(GAMESTATE,board);
     int distance = desSquare - srcSquare;
     int piece = board[srcSquare] & 0b11111100;
     int playerSrc = board[srcSquare] & 0b00000011;
@@ -492,12 +474,19 @@ int pawn_promotion_condition(int src,int des){
 // Genrate the all the legal moves at a particular notation
 int generate_legal_moves(int src_moves[],int des_moves[]){
     int moves = 0;
+
+    struct gameState temp_gamestate;
+    int temp_board[128];
+
     for(int src = 0; src < 128; src++){
         if((src & 0x88)) continue;
         for(int dest= 0; dest < 128; dest++){
             if((dest & 0x88) || dest == src) continue;
+
+            save_last_move(&temp_gamestate,temp_board);
             int legal = movePiece(src,dest);
-            undo_last_move();
+            undo_last_move(&temp_gamestate,temp_board);
+
             if(legal){
                 src_moves[moves] = src;
                 des_moves[moves] = dest;
@@ -510,12 +499,18 @@ int generate_legal_moves(int src_moves[],int des_moves[]){
 
 // If a player has any legal move 
 int has_legal_move(int player_num){
+
+    struct gameState temp_gamestate;
+    int temp_board[128];
+
     for(int src = 0; src < 128; src++){
         if((src & 0x88) || !(board[src] & player_num)) continue;
         for(int dest= 0; dest < 128; dest++){
             if((dest & 0x88) || dest == src) continue;
+
+            save_last_move(&temp_gamestate,temp_board);
             int legal = movePiece(src,dest);
-            undo_last_move();
+            undo_last_move(&temp_gamestate,temp_board);
             if(legal) return 1;
         }
     }
@@ -529,6 +524,9 @@ unsigned long long int perft(int depth){
     int n_moves,i;
     unsigned long long int nodes = 0;
 
+    struct gameState temp_gamestate;
+    int temp_board[128];
+
     if(depth == 0){
         return 1ULL;
     }
@@ -536,7 +534,10 @@ unsigned long long int perft(int depth){
     n_moves = generate_legal_moves(src_moves,des_moves);
     for(i = 0; i < n_moves; i++){
         int pawn_promotiuon = pawn_promotion_condition(src_moves[i],des_moves[i]);
+
+        save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
+
         if(pawn_promotiuon){
             int player = board[des_moves[i]] & 0b00000011;
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
@@ -547,7 +548,7 @@ unsigned long long int perft(int depth){
         }else{
             nodes += perft(depth -1);
         }
-        undo_last_move();
+        undo_last_move(&temp_gamestate,temp_board);
         
     }
     return nodes;
@@ -560,20 +561,24 @@ void make_move(char *s){
     int translate = translateNotation(s, &srcSquare, &desSquare);
     int pawn_promotion = pawn_promotion_condition(srcSquare,desSquare);
 
+    struct gameState temp_gamestate;
+    int temp_board[128];
+
     if(translate == 0){
         printf("Couldn't Translate\n");
         return;
     }
+
+    save_last_move(&temp_gamestate,temp_board);
     int piece = movePiece(srcSquare,desSquare);
     if(!piece){
-        undo_last_move();
+        undo_last_move(&temp_gamestate,temp_board);
         return;
     }else{
         if(pawn_promotion && translate > 1){
             int player = board[desSquare] & 0b00000011;
             board[desSquare] = (translate | player);
         }
-        popMoveHistory();
         return;
     }
         

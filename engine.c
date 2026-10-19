@@ -171,13 +171,21 @@ int negamax( int depth ){
     int score = -999999;
     int src_moves[256];
     int des_moves[256];
+
+    struct gameState temp_gamestate;
+    int temp_board[128];
+
+
     int n_moves = generate_legal_moves(src_moves,des_moves);
 
     for(int i = 0; i < n_moves ; i++){
         if(!(board[src_moves[i]] & GAMESTATE.current_player)) continue;
 
         int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+
+        save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
+
         if(pawn_promotion){
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
             for(int j = 0 ; j < 4; j++){
@@ -190,7 +198,7 @@ int negamax( int depth ){
             if(score > max) max = score;
         }
        
-        undo_last_move();
+        undo_last_move(&temp_gamestate,temp_board);
         
     }
     return max;
@@ -208,6 +216,10 @@ void generate_ai_move(int depth){
     int n_moves = generate_legal_moves(src_moves,des_moves);
     int promotion_piece = 0; // 0 for none, any other for whatever piece it was promoted to
     
+    struct gameState temp_gamestate;
+    int temp_board[128];
+    
+    
     clock_t start_time = clock();
     nodes = 0;
 
@@ -215,6 +227,8 @@ void generate_ai_move(int depth){
         if(!(board[src_moves[i]] & GAMESTATE.current_player)) continue;
 
         int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+
+        save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
         if(pawn_promotion){
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
@@ -238,17 +252,16 @@ void generate_ai_move(int depth){
                 };
             }
         
-        undo_last_move(); 
+        undo_last_move(&temp_gamestate,temp_board); 
     }
 
     clock_t end_time = clock();
-
-    printf("Move found: Nodes Searched: %llu Time spend:%.3f\n",nodes,(double)(end_time - start_time) / CLOCKS_PER_SEC);
+    double time_spent = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+    printf("Move found: Nodes Searched: %llu Time spend:%.3f NPS: %.5f \n",nodes,time_spent,nodes/time_spent);
 
     movePiece(max_src_move,max_des_move);
     if(promotion_piece){
         int mover = board[max_des_move] & 0b00000011;
         board[max_des_move] = (promotion_piece | mover);
     }
-    popMoveHistory();
 }

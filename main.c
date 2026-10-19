@@ -22,9 +22,6 @@ void initGameState()
 
     GAMESTATE.moves = 0;
     GAMESTATE.enPassant_square = -1;
-
-    HISTORY.latest = NULL;
-    HISTORY.moveHistorySize = 0;
 }
 void initBoard()
 {
@@ -61,8 +58,6 @@ void initBoard()
 void parse_fen(char *s){
     
     // Pre initializing some things...
-    HISTORY.latest = NULL;
-    HISTORY.moveHistorySize = 0;
     GAMESTATE.players[0].castling_rights[0] = 0;
     GAMESTATE.players[0].castling_rights[1] = 0;
     GAMESTATE.players[1].castling_rights[0] = 0;
@@ -174,9 +169,9 @@ void test_samples(){
 
     for(int i = 0; i < num_samples; i++){
         parse_fen(fen_samples[i]);
-        printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(3));
+        printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(4));
         printBoard();
-        generate_ai_move(3);
+        generate_ai_move(4);
         printBoard();
         printf("NO: %d DONEEEE\n\n", i+1);
     }
