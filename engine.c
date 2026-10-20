@@ -173,7 +173,7 @@ int negamax( int depth ){
     int des_moves[256];
 
     struct gameState temp_gamestate;
-    int temp_board[128];
+    u_int8_t temp_board[128];
 
 
     int n_moves = generate_legal_moves(src_moves,des_moves);
@@ -218,7 +218,7 @@ void generate_ai_move(int depth){
     int promotion_piece = 0; // 0 for none, any other for whatever piece it was promoted to
     
     struct gameState temp_gamestate;
-    int temp_board[128];
+    u_int8_t temp_board[128];
     
     
     clock_t start_time = clock();

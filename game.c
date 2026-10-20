@@ -2,11 +2,11 @@
 
 /* Helper functions to manage move history */
 
-void save_last_move(struct gameState *prev_state, int prev_board[128]){
+void save_last_move(struct gameState *prev_state, u_int8_t prev_board[128]){
     *prev_state = GAMESTATE;
     memcpy(prev_board,board,128);
 }
-void undo_last_move(struct gameState *prev_state, int prev_board[128]){
+void undo_last_move(struct gameState *prev_state, u_int8_t prev_board[128]){
     GAMESTATE = *prev_state;
     memcpy(board,prev_board,128);
 }
@@ -371,9 +371,9 @@ void evaluate_castling_rights(int piece,int player, int srcSquare){ // Just a ch
     int opponent = (player == 1) ? 2 : 1;
     int oppenent_rookSquare = (opponent - 1) * 112;
 
-    if(!board[oppenent_rookSquare + 7]){ // Short Castle
+    if(board[oppenent_rookSquare + 7] & player){ // Short Castle
         GAMESTATE.players[opponent - 1].castling_rights[0] = 0;
-    }else if(!board[oppenent_rookSquare]){ // Long Castle
+    }else if(board[oppenent_rookSquare] & player){ // Long Castle
         GAMESTATE.players[opponent - 1].castling_rights[1] = 0;
     }
 
@@ -384,12 +384,12 @@ void evaluate_castling_rights(int piece,int player, int srcSquare){ // Just a ch
     }
     else if (piece == ROOK)
     {
-        int file = boardToFile(srcSquare);
-        if (file == 0)
+        int player_rookSquare = (player - 1) * 112;
+        if (player_rookSquare == srcSquare)
         {
             GAMESTATE.players[player - 1].castling_rights[1] = 0;
         }
-        else if (file == 7)
+        else if (player_rookSquare + 7 == srcSquare)
         {
             GAMESTATE.players[player - 1].castling_rights[0] = 0;
         }
@@ -488,7 +488,7 @@ int generate_legal_moves(int src_moves[],int des_moves[]){
     int moves = 0;
 
     struct gameState temp_gamestate;
-    int temp_board[128];
+    u_int8_t temp_board[128];
 
     for(int src = 0; src < 128; src++){
         if((src & 0x88)) continue;
@@ -513,7 +513,7 @@ int generate_legal_moves(int src_moves[],int des_moves[]){
 int has_legal_move(int player_num){
 
     struct gameState temp_gamestate;
-    int temp_board[128];
+    u_int8_t temp_board[128];
 
     for(int src = 0; src < 128; src++){
         if((src & 0x88) || !(board[src] & player_num)) continue;
@@ -537,7 +537,7 @@ unsigned long long int perft(int depth){
     unsigned long long int nodes = 0;
 
     struct gameState temp_gamestate;
-    int temp_board[128];
+    u_int8_t temp_board[128];
 
     if(depth == 0){
         return 1ULL;
@@ -574,7 +574,7 @@ void make_move(char *s){
     int pawn_promotion = pawn_promotion_condition(srcSquare,desSquare);
 
     struct gameState temp_gamestate;
-    int temp_board[128];
+    u_int8_t temp_board[128];
 
     if(translate == 0){
         printf("Couldn't Translate\n");

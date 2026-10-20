@@ -6,8 +6,8 @@
 
 
 /* Helper functions to manage history */
-void save_last_move(struct gameState *prev_state, int prev_board[128]);
-void undo_last_move(struct gameState *prev_state, int prev_board[128]);
+void save_last_move(struct gameState *prev_state, u_int8_t prev_board[128]);
+void undo_last_move(struct gameState *prev_state, u_int8_t prev_board[128]);
 
 /* Printing the board in the terminal */
 void printBoard();
