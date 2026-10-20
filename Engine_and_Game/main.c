@@ -157,7 +157,7 @@ void parse_fen(char *s){
         }
         i++;
     }
-    calculatae_eval_scores();
+    calculate_eval_scores();
 }
 // Testing different samples
 void test_samples(){

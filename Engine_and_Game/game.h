@@ -26,7 +26,7 @@ int evaluate_checkmate_stalemate();
 int pawn_promotion_condition(int src,int des);
 
 /* Genrating legal moves */
-int generate_legal_moves(int src_moves[],int des_moves[]);
+int generate_legal_moves(int src_moves[],int des_moves[],int player);
 
 /* Perft(DEBUG) function */
 unsigned long long int perft(int depth);

@@ -128,7 +128,7 @@ int square_weight(int piece, int square){
     return 0;
 }
 
-void calculatae_eval_scores(){
+void calculate_eval_scores(){
     GAMESTATE.piece_score = 0;
     GAMESTATE.square_score = 0;
     for(int i = 0; i < 120; i++){
@@ -166,7 +166,10 @@ int negamax( int depth ){
 
     nodes++;
 
-    if(depth == 0) return evaluate_score();
+    if(depth == 0){
+        calculate_eval_scores(); 
+        return evaluate_score();
+    }
     int max = -999999;
     int score = -999999;
     int src_moves[256];
@@ -176,10 +179,17 @@ int negamax( int depth ){
     u_int8_t temp_board[128];
 
 
-    int n_moves = generate_legal_moves(src_moves,des_moves);
+    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player);
+    if(n_moves == 0){
+        int player = GAMESTATE.current_player;
+        int opponent = (player == 1) ? 2: 1;
+        if(check_attacked(GAMESTATE.players[player -1].kingSquare,opponent) != -1){
+            return -900000 - depth; // faster checkmates are preferrred
+        }
+        return 0; // Stalemate
+    }
 
     for(int i = 0; i < n_moves ; i++){
-        if(!(board[src_moves[i]] & GAMESTATE.current_player)) continue;
 
         int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
         int player_this_move = GAMESTATE.current_player;
@@ -209,12 +219,12 @@ void generate_ai_move(int depth){
     int src_moves[256];
     int des_moves[256];
 
-    int max = -999999;
+    int max = -1000000;
     int score = -999999;
 
     int max_src_move = -1;
     int max_des_move = -1;
-    int n_moves = generate_legal_moves(src_moves,des_moves);
+    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player);
     int promotion_piece = 0; // 0 for none, any other for whatever piece it was promoted to
     
     struct gameState temp_gamestate;
@@ -225,7 +235,6 @@ void generate_ai_move(int depth){
     nodes = 0;
 
     for(int i = 0 ; i < n_moves; i++){
-        if(!(board[src_moves[i]] & GAMESTATE.current_player)) continue;
 
         int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
         int player_this_move = GAMESTATE.current_player;
@@ -266,4 +275,5 @@ void generate_ai_move(int depth){
         int mover = board[max_des_move] & 0b00000011;
         board[max_des_move] = (promotion_piece | mover);
     }
+    calculate_eval_scores();
 }

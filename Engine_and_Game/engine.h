@@ -6,6 +6,6 @@
 
 void generate_ai_move(int depth);
 
-void calculatae_eval_scores();
+void calculate_eval_scores();
 
 #endif

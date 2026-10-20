@@ -373,7 +373,8 @@ void evaluate_castling_rights(int piece,int player, int srcSquare){ // Just a ch
 
     if(board[oppenent_rookSquare + 7] & player){ // Short Castle
         GAMESTATE.players[opponent - 1].castling_rights[0] = 0;
-    }else if(board[oppenent_rookSquare] & player){ // Long Castle
+    }
+    if(board[oppenent_rookSquare] & player){ // Long Castle
         GAMESTATE.players[opponent - 1].castling_rights[1] = 0;
     }
 
@@ -447,7 +448,6 @@ int movePiece(int srcSquare, int desSquare) // Actually moves the piece on the b
         return 0;
     }
     evaluate_castling_rights(piece,previous_player,srcSquare);
-    calculatae_eval_scores();
     return piece;
 }
 
@@ -483,17 +483,18 @@ int pawn_promotion_condition(int src,int des){
     return 0;
 }
 
-// Genrate the all the legal moves at a particular notation
-int generate_legal_moves(int src_moves[],int des_moves[]){
+// Genrate the all the legal moves at a particular notation for a player , 0 means both player
+int generate_legal_moves(int src_moves[],int des_moves[],int player){
     int moves = 0;
 
     struct gameState temp_gamestate;
     u_int8_t temp_board[128];
 
     for(int src = 0; src < 128; src++){
-        if((src & 0x88)) continue;
+        if((src & 0x88) || !board[src]) continue;
+        if(player != 0 && !(board[src] & player)) continue;
         for(int dest= 0; dest < 128; dest++){
-            if((dest & 0x88) || dest == src) continue;
+            if((dest & 0x88) || dest == src || !lookup[dest - src + 119]) continue;
 
             save_last_move(&temp_gamestate,temp_board);
             int legal = movePiece(src,dest);
@@ -543,7 +544,7 @@ unsigned long long int perft(int depth){
         return 1ULL;
     }
 
-    n_moves = generate_legal_moves(src_moves,des_moves);
+    n_moves = generate_legal_moves(src_moves,des_moves,0); // Genrate for both players
     for(i = 0; i < n_moves; i++){
         int pawn_promotiuon = pawn_promotion_condition(src_moves[i],des_moves[i]);
         int player_this_move = GAMESTATE.current_player;
@@ -585,14 +586,17 @@ void make_move(char *s){
     int piece = movePiece(srcSquare,desSquare);
     if(!piece){
         undo_last_move(&temp_gamestate,temp_board);
+        calculate_eval_scores();
         return;
     }else{
         if(pawn_promotion && translate > 1){
             int player = board[desSquare] & 0b00000011;
             board[desSquare] = (translate | player);
         }
+        calculate_eval_scores();
         return;
     }
+    
         
     
 }
