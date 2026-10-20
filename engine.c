@@ -182,6 +182,7 @@ int negamax( int depth ){
         if(!(board[src_moves[i]] & GAMESTATE.current_player)) continue;
 
         int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+        int player_this_move = GAMESTATE.current_player;
 
         save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
@@ -189,7 +190,7 @@ int negamax( int depth ){
         if(pawn_promotion){
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
             for(int j = 0 ; j < 4; j++){
-                board[des_moves[i]] = (pieces[j] | GAMESTATE.current_player);
+                board[des_moves[i]] = (pieces[j] | player_this_move);
                 score = -negamax(depth - 1);
                 if(score > max) max = score;
             }
@@ -227,13 +228,14 @@ void generate_ai_move(int depth){
         if(!(board[src_moves[i]] & GAMESTATE.current_player)) continue;
 
         int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+        int player_this_move = GAMESTATE.current_player;
 
         save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
         if(pawn_promotion){
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
             for(int j = 0 ; j < 4; j++){
-                board[des_moves[i]] = (pieces[j] | GAMESTATE.current_player);
+                board[des_moves[i]] = (pieces[j] | player_this_move);
                 score = -negamax(depth - 1);
                 if(score > max){ 
                     promotion_piece = pieces[j];

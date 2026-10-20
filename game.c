@@ -208,7 +208,7 @@ int check_attacked(int src_square, int enemy_player){ //Checks if a square is at
     for(int i = 0; i < 8; i++){
         int desSquare = src_square + horseySteps[i];
         
-        if((board[desSquare] & KNIGHT) && (board[desSquare] & enemy_player)){
+        if((in_bounds(desSquare))&&(board[desSquare] & KNIGHT) && (board[desSquare] & enemy_player)){
             return desSquare;
         }
     }
@@ -334,9 +334,10 @@ int specialMove(int srcSquare, int desSquare) // Check if the move is a special 
         }
         break;
     case KING: // Castle
-        if(check_attacked(desSquare,opponent) != -1) return 0;
+        if(check_attacked(desSquare,opponent) != -1 || check_attacked(srcSquare,opponent) != -1) return 0;
         if (distance == 2 && pathClear(srcSquare, srcSquare + 3) && GAMESTATE.players[player-1].castling_rights[0] == 1)
         {
+
             // King interchange
             if(check_attacked(desSquare-1,opponent) != -1) return 0;
             board[desSquare] = board[srcSquare];
@@ -365,6 +366,17 @@ int specialMove(int srcSquare, int desSquare) // Check if the move is a special 
 }
 
 void evaluate_castling_rights(int piece,int player, int srcSquare){ // Just a check if a player still has catling rights or not after move 
+    
+    //Remove the opponent castling rights if the player captured their rook
+    int opponent = (player == 1) ? 2 : 1;
+    int oppenent_rookSquare = (opponent - 1) * 112;
+
+    if(!board[oppenent_rookSquare + 7]){ // Short Castle
+        GAMESTATE.players[opponent - 1].castling_rights[0] = 0;
+    }else if(!board[oppenent_rookSquare]){ // Long Castle
+        GAMESTATE.players[opponent - 1].castling_rights[1] = 0;
+    }
+
     if (piece == KING)
     {
         GAMESTATE.players[player - 1].castling_rights[0] = 0;
@@ -534,15 +546,15 @@ unsigned long long int perft(int depth){
     n_moves = generate_legal_moves(src_moves,des_moves);
     for(i = 0; i < n_moves; i++){
         int pawn_promotiuon = pawn_promotion_condition(src_moves[i],des_moves[i]);
+        int player_this_move = GAMESTATE.current_player;
 
         save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
 
         if(pawn_promotiuon){
-            int player = board[des_moves[i]] & 0b00000011;
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
             for(int j = 0 ; j < 4; j++){
-                board[des_moves[i]] = (pieces[j] | player);
+                board[des_moves[i]] = (pieces[j] | player_this_move);
                 nodes += perft(depth -1);
             }
         }else{

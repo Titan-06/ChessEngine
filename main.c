@@ -83,12 +83,6 @@ void parse_fen(char *s){
             {
                 int index = rankFileToBoard(rank,file);
 
-                if(gaps > 0){
-                    board[index] = 0;
-                    gaps--;
-                    file++;
-                    continue;
-                }
                 if(character == '/'){
                     rank--;
                     file = 0;
@@ -109,7 +103,12 @@ void parse_fen(char *s){
                     player = 2;
 
                 }else{
-                    gaps = character - 48;
+                    gaps = character - '0';
+                    for(int j = 0; j < gaps; j++){
+                        board[rankFileToBoard(rank,file)] = 0;
+                        file++;
+                        continue;
+                    }
                     i++;
                     continue;
                 }
@@ -162,18 +161,22 @@ void parse_fen(char *s){
 }
 // Testing different samples
 void test_samples(){
-    char *fen_samples[] = {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                           "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
-                           "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -"};
-    int num_samples = 3;
+    char *fen_samples[] = {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", //starting position
+                           "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", //e4
+                           "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+                        "r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1",
+                        "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1"}; 
+    int num_samples = 5;
 
     for(int i = 0; i < num_samples; i++){
         parse_fen(fen_samples[i]);
-        printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(4));
+        printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(2));
         printBoard();
-        generate_ai_move(4);
+        generate_ai_move(2);
         printBoard();
         printf("NO: %d DONEEEE\n\n", i+1);
+
+        memset(board, 0, sizeof(board)); // Clearing the board
     }
 }
 
