@@ -214,6 +214,74 @@ int negamax( int depth ){
     }
     return max;
 }
+
+int alphaBeta(int alpha, int beta, int depth){
+    nodes++;
+
+    if(depth == 0){
+        calculate_eval_scores();
+        return evaluate_score();
+    }
+    
+    int bestValue = -1000000;
+    int score = -999999;
+    int src_moves[256];
+    int des_moves[256];
+
+
+    struct gameState temp_gamestate;
+    u_int8_t temp_board[128];
+
+    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player);
+    if(n_moves == 0){
+        int player = GAMESTATE.current_player;
+        int opponent = (player == 1) ? 2: 1;
+        if(check_attacked(GAMESTATE.players[player -1].kingSquare,opponent) != -1){
+            return -900000 - depth; // faster checkmates are preferrred
+        }
+        return 0; // Stalemate
+    }
+    for(int i = 0; i < n_moves; i++){
+        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);;
+        int player_this_move = GAMESTATE.current_player;
+        save_last_move(&temp_gamestate,temp_board);
+        movePiece(src_moves[i],des_moves[i]);
+
+        if(pawn_promotion){
+            int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
+            for(int j = 0 ; j < 4; j++){
+                board[des_moves[i]] = (pieces[j] | player_this_move);
+                score = -alphaBeta(-beta,-alpha,depth-1);
+                if(score > bestValue){
+                    bestValue = score;
+
+                    if(score > alpha) alpha = score;
+
+                }
+                if(score >= beta){
+                    undo_last_move(&temp_gamestate,temp_board);
+                    return bestValue;
+                }
+            }
+        }else{
+            score = -alphaBeta(-beta,-alpha,depth - 1);
+            if(score > bestValue){
+                bestValue = score;
+
+                if(score > alpha) alpha = score;
+
+            }
+            if(score >= beta){
+                undo_last_move(&temp_gamestate,temp_board);
+                return bestValue;
+            }
+        }
+       
+        undo_last_move(&temp_gamestate,temp_board);
+    }
+    return bestValue;
+
+}
 void handle_uci_print(int max_src_move,int max_des_move,int promotion_piece){ // 0 if no promotion piece
     // Fallback: If no legal move found (e.g., checkmate or stalemate)
     if (max_src_move == -1 || max_des_move == -1) {
@@ -249,11 +317,11 @@ void handle_uci_print(int max_src_move,int max_des_move,int promotion_piece){ //
     }
     fflush(stdout);
 }
-void generate_ai_move(int depth, int playing_or_testing){ // 0 for testing , 1 for Playing
+void generate_ai_move(int alpha,int beta,int depth, int playing_or_testing){ // 0 for testing , 1 for Playing
     int src_moves[256];
     int des_moves[256];
 
-    int max = -1000000;
+    int bestValue = -1000000;
     int score = -999999;
 
     int max_src_move = -1;
@@ -268,36 +336,45 @@ void generate_ai_move(int depth, int playing_or_testing){ // 0 for testing , 1 f
     clock_t start_time = clock();;
     nodes = 0;
 
-    for(int i = 0 ; i < n_moves; i++){
-
-        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+    for(int i = 0; i < n_moves; i++){
+        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);;
         int player_this_move = GAMESTATE.current_player;
-
         save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
+
         if(pawn_promotion){
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
             for(int j = 0 ; j < 4; j++){
                 board[des_moves[i]] = (pieces[j] | player_this_move);
-                score = -negamax(depth - 1);
-                if(score > max){ 
-                    promotion_piece = pieces[j];
-                    max = score;
+                score = -alphaBeta(-beta,-alpha,depth-1);
+                if(score > bestValue){
+                    bestValue = score;
                     max_src_move = src_moves[i];
                     max_des_move = des_moves[i];
-                };
+                    promotion_piece = pieces[j];
+                    if(score > alpha) alpha = score;
+
+                }
+                if(score >= beta){
+                    break;
+                }
             }
         }else{
-            score = -negamax(depth - 1);
-            if(score > max){
-                promotion_piece = 0; 
-                max = score;
-                    max_src_move = src_moves[i];
-                    max_des_move = des_moves[i];
-                };
+            score = -alphaBeta(-beta,-alpha,depth-1);
+            if(score > bestValue){
+                bestValue = score;
+                max_src_move = src_moves[i];
+                max_des_move = des_moves[i];
+                promotion_piece = 0;
+                if(score > alpha) alpha = score;
+
             }
-        
-        undo_last_move(&temp_gamestate,temp_board); 
+            if(score >= beta){
+                break;
+            }
+        }
+       
+        undo_last_move(&temp_gamestate,temp_board);
     }
     clock_t end_time = clock();
 

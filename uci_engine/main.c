@@ -123,8 +123,7 @@ void test_samples(){
     for(int i = 0; i < num_samples; i++){
         printf("Starting %d position ~~~~",i+1);
         parse_fen(fen_samples[i]);
-        printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(4));
-        generate_ai_move(4,0);
+        generate_ai_move(-1000000,1000000,5,0);
         printf("NO: %d DONEEEE\n\n", i+1);
 
         memset(board, 0, sizeof(board)); // Clearing the board
@@ -251,14 +250,14 @@ void uci_loop()
         }
         else if (strncmp(line, "go", 2) == 0)
         {
-            int depth = 5; // Default depth if not specified
+            int depth = 4; // Default depth if not specified
             char *depth_ptr = strstr(line, "depth");
             if (depth_ptr)
             {
                 depth = atoi(depth_ptr + 6);
                 if (depth <= 0) depth = 1;
             }
-            generate_ai_move(depth,1);
+            generate_ai_move(-1000000,1000000,depth,1);
         }
         else if (strcmp(line, "quit") == 0)
         {

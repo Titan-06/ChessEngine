@@ -4,7 +4,7 @@
 #include "defs.h"
 #include "game.h"
 
-void generate_ai_move(int depth, int playing_or_testing);
+void generate_ai_move(int alpha,int beta,int depth, int playing_or_testing);
 
 void calculate_eval_scores();
 
