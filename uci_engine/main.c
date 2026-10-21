@@ -123,7 +123,7 @@ void test_samples(){
     for(int i = 0; i < num_samples; i++){
         printf("Starting %d position ~~~~",i+1);
         parse_fen(fen_samples[i]);
-        generate_ai_move(-1000000,1000000,5,0);
+        generate_ai_move(-1000000,1000000,7,0);
         printf("NO: %d DONEEEE\n\n", i+1);
 
         memset(board, 0, sizeof(board)); // Clearing the board

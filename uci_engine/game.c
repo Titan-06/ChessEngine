@@ -10,6 +10,27 @@ void undo_last_move(struct gameState *prev_state, u_int8_t prev_board[128]){
     GAMESTATE = *prev_state;
     memcpy(board,prev_board,128);
 }
+/* For MVV LVA */
+int piece_value(int boardValue){
+    int piece = boardValue & 0b11111100;
+    switch (piece)
+    {
+    case KING:
+        return 12;
+    case QUEEN:
+        return 10;
+    case ROOK:
+        return 8;
+    case KNIGHT:
+        return 6;
+    case BISHOP:
+        return 4;
+    case PAWN:
+        return 2;
+    
+    }
+    return 0;
+}
 
 /* Helper functions for translating the board(0x88) */
 int in_bounds(uint8_t des)
@@ -435,9 +456,20 @@ int pawn_promotion_condition(int src,int des){
     return 0;
 }
 
+/* Simple MVV LVA implemented */
+
 // Genrate the all the legal moves at a particular notation for a player , 0 means both player
 int generate_legal_moves(int src_moves[],int des_moves[],int player){
     int moves = 0;
+
+
+    int agressive_src[256];
+    int agressive_des[256];
+    int agressive_moves = 0;
+
+    int quiet_src[256];
+    int quiet_des[256];
+    int quiet_moves = 0;
 
     struct gameState temp_gamestate;
     u_int8_t temp_board[128];
@@ -446,6 +478,7 @@ int generate_legal_moves(int src_moves[],int des_moves[],int player){
         if((src & 0x88) || !board[src]) continue;
         if(player != 0 && !(board[src] & player)) continue;
         for(int dest= 0; dest < 128; dest++){
+            int opponent = (player == 1) ? 2 : 1;
             if((dest & 0x88) || dest == src || !lookup[dest - src + 119]) continue;
 
             save_last_move(&temp_gamestate,temp_board);
@@ -453,12 +486,59 @@ int generate_legal_moves(int src_moves[],int des_moves[],int player){
             undo_last_move(&temp_gamestate,temp_board);
 
             if(legal){
-                src_moves[moves] = src;
-                des_moves[moves] = dest;
+                if(board[dest] & (opponent)){
+                    agressive_src[agressive_moves] = src;
+                    agressive_des[agressive_moves] = dest;
+                    agressive_moves++;
+                }else{
+                    quiet_src[quiet_moves] = src;
+                    quiet_des[quiet_moves] = dest;
+                    quiet_moves++;
+                }
                 moves++;
             }
         }
     }
+
+    // Aggressive moves are sorted , and placed in the variables
+    
+    for(int i = 0; i < agressive_moves; i++){
+
+        int maxx_aggreso = -999;
+        int maxx_index = 999;
+
+        for(int j = 0; j < agressive_moves; j++){
+            if(agressive_src[j] == -1) continue;
+             
+            int src = agressive_src[j];
+            int des = agressive_des[j];
+
+            int agresso = (piece_value(board[des])*100) + (-1 * piece_value(board[src])); // Prioritize Victim , Negate the attacker to get the final value
+
+            // Give the first value the max value
+            if( j < maxx_index){
+                maxx_index = j;
+                maxx_aggreso = agresso;
+            }
+
+            // If any next value is bigger or equal then it make it the max
+            if(agresso >= maxx_aggreso){
+                maxx_index = j;
+                maxx_aggreso = agresso;
+            }
+        }
+        src_moves[i] = agressive_src[maxx_index];
+        des_moves[i] = agressive_des[maxx_index];
+        agressive_src[maxx_index] = -1;
+
+    }
+    // Quiet moves are copied as it is 
+    for(int i = 0; i < quiet_moves; i++){
+        int index = i + agressive_moves;
+        src_moves[index] = quiet_src[i];
+        des_moves[index] = quiet_des[i];
+    }
+
     return moves;
 }
 
