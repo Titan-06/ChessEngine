@@ -1,7 +1,6 @@
 #include "game.h"
 
-/* Helper functions to manage move history */
-
+/* Helper functions to manage move history, You need to make variables yourself in functions */
 void save_last_move(struct gameState *prev_state, u_int8_t prev_board[128]){
     *prev_state = GAMESTATE;
     memcpy(prev_board,board,128);
@@ -10,6 +9,7 @@ void undo_last_move(struct gameState *prev_state, u_int8_t prev_board[128]){
     GAMESTATE = *prev_state;
     memcpy(board,prev_board,128);
 }
+
 /* For MVV LVA */
 int piece_value(int boardValue){
     int piece = boardValue & 0b11111100;
@@ -106,7 +106,6 @@ int translateNotation(char *move, int *src, int *dest) // Returns 1 normally, 0 
     rank = move[3] - 49;
     *dest = rankFileToBoard(rank, file);
 
-    printf("Src: %d Des: %d Player: %d\n", *src, *dest, GAMESTATE.current_player);
 
     if (len == 4)
     {
@@ -456,10 +455,10 @@ int pawn_promotion_condition(int src,int des){
     return 0;
 }
 
-/* Simple MVV LVA implemented */
+/* Simple MVV LVA implemented ( Right in the generate legal moves function )*/
 
 // Genrate the all the legal moves at a particular notation for a player , 0 means both player
-int generate_legal_moves(int src_moves[],int des_moves[],int player){
+int generate_legal_moves(int src_moves[],int des_moves[],int player, int captures_only){
     int moves = 0;
 
 
@@ -479,7 +478,9 @@ int generate_legal_moves(int src_moves[],int des_moves[],int player){
         if(player != 0 && !(board[src] & player)) continue;
         for(int dest= 0; dest < 128; dest++){
             int opponent = (player == 1) ? 2 : 1;
-            if((dest & 0x88) || dest == src || !lookup[dest - src + 119]) continue;
+            if((dest & 0x88) || dest == src || !lookup[dest - src + 119] || (board[dest] & player)) continue;
+
+            if(captures_only && board[dest] == 0 && board[dest] != GAMESTATE.enPassant_square) continue; // If captures only, skip quiet moves 
 
             save_last_move(&temp_gamestate,temp_board);
             int legal = movePiece(src,dest);
@@ -561,44 +562,6 @@ int has_legal_move(int player_num){
     }
     return 0;
 }
-
-// The Perft(DEBUG) function 
-unsigned long long int perft(int depth){
-    int src_moves[256];
-    int des_moves[256];
-    int n_moves,i;
-    unsigned long long int nodes = 0;
-
-    struct gameState temp_gamestate;
-    u_int8_t temp_board[128];
-
-    if(depth == 0){
-        return 1ULL;
-    }
-
-    n_moves = generate_legal_moves(src_moves,des_moves,0); // Genrate for both players
-    for(i = 0; i < n_moves; i++){
-        int pawn_promotiuon = pawn_promotion_condition(src_moves[i],des_moves[i]);
-        int player_this_move = GAMESTATE.current_player;
-
-        save_last_move(&temp_gamestate,temp_board);
-        movePiece(src_moves[i],des_moves[i]);
-
-        if(pawn_promotiuon){
-            int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
-            for(int j = 0 ; j < 4; j++){
-                board[des_moves[i]] = (pieces[j] | player_this_move);
-                nodes += perft(depth -1);
-            }
-        }else{
-            nodes += perft(depth -1);
-        }
-        undo_last_move(&temp_gamestate,temp_board);
-        
-    }
-    return nodes;
-}
-
 // The Main Move Function that translates the human LAN to move the piece
 void make_move(char *s){
     int srcSquare;

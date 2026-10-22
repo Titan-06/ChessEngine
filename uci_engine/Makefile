@@ -2,7 +2,7 @@ CC = gcc
 
 CFLAGS = -O2 -Wall 
 
-TARGET = main
+TARGET = v4_quiesce
 
 SRCS = main.c defs.c game.c engine.c
 

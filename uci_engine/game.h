@@ -22,12 +22,8 @@ int evaluate_checkmate_stalemate();
 /* To see if the condition for a pawn promotion has been met */
 int pawn_promotion_condition(int src,int des);
 
-/* Genrating legal moves */
-int generate_legal_moves(int src_moves[],int des_moves[],int player);
-
-/* Perft(DEBUG) function */
-unsigned long long int perft(int depth);
-
+/* Genrating/Checking legal moves */
+int generate_legal_moves(int src_moves[],int des_moves[],int player, int captures_only);
 int has_legal_move(int player_num);
 
 /* Helper functions to translate the board */
