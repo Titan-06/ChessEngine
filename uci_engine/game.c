@@ -482,42 +482,6 @@ int has_legal_move(int player_num){
     return 0;
 }
 
-// The Perft(DEBUG) function 
-unsigned long long int perft(int depth){
-    int src_moves[256];
-    int des_moves[256];
-    int n_moves,i;
-    unsigned long long int nodes = 0;
-
-    struct gameState temp_gamestate;
-    u_int8_t temp_board[128];
-
-    if(depth == 0){
-        return 1ULL;
-    }
-
-    n_moves = generate_legal_moves(src_moves,des_moves,0); // Genrate for both players
-    for(i = 0; i < n_moves; i++){
-        int pawn_promotiuon = pawn_promotion_condition(src_moves[i],des_moves[i]);
-        int player_this_move = GAMESTATE.current_player;
-
-        save_last_move(&temp_gamestate,temp_board);
-        movePiece(src_moves[i],des_moves[i]);
-
-        if(pawn_promotiuon){
-            int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
-            for(int j = 0 ; j < 4; j++){
-                board[des_moves[i]] = (pieces[j] | player_this_move);
-                nodes += perft(depth -1);
-            }
-        }else{
-            nodes += perft(depth -1);
-        }
-        undo_last_move(&temp_gamestate,temp_board);
-        
-    }
-    return nodes;
-}
 
 // The Main Move Function that translates the human LAN to move the piece
 void make_move(char *s){
