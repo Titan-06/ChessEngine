@@ -50,137 +50,6 @@ void initBoard()
     }
 }
 
-
-
-
-/* The FEN parser for testing purposes*/
-
-void parse_fen(char *s){
-    
-    // Pre initializing some things...
-    GAMESTATE.players[0].castling_rights[0] = 0;
-    GAMESTATE.players[0].castling_rights[1] = 0;
-    GAMESTATE.players[1].castling_rights[0] = 0;
-    GAMESTATE.players[1].castling_rights[1] = 0;
-    GAMESTATE.enPassant_square = -1;
-
-    int i = 0;
-    int sections = 1;
-    int rank = 7; // One less to use our translator functions
-    int file = 0;
-
-    int gaps = 0;
-
-    while(s[i] != '\0'){
-        char character = s[i];
-        if(character == ' '){
-            sections++;
-            i++;
-            continue;
-        }
-        switch(sections){
-            case 1:
-            {
-                int index = rankFileToBoard(rank,file);
-
-                if(character == '/'){
-                    rank--;
-                    file = 0;
-                    i++;
-                    continue;
-                }
-
-                
-
-                gaps = 0;
-                int player = 2;
-                int piece = 0;
-                
-                if(character <= 90 && character >= 65){
-                    player = 1;
-                    character += 32;
-                }else if(character <= 122 && character >= 97){
-                    player = 2;
-
-                }else{
-                    gaps = character - '0';
-                    for(int j = 0; j < gaps; j++){
-                        board[rankFileToBoard(rank,file)] = 0;
-                        file++;
-                        continue;
-                    }
-                    i++;
-                    continue;
-                }
-                
-                piece = signToPiece(character);
-
-                if(piece == KING){
-                    GAMESTATE.players[player - 1].kingSquare = index;
-                }
-
-                board[index] = (player | piece);
-                file++;
-                break;
-            }
-            case 2:
-                if(character == 'w'){
-                    GAMESTATE.current_player = 1;
-                }else{
-                    GAMESTATE.current_player = 2;
-                }
-                break;
-            case 3:
-                switch (character)
-                {
-                case 'k':
-                    GAMESTATE.players[1].castling_rights[0] = 1;
-                    break;
-                case 'q':
-                    GAMESTATE.players[1].castling_rights[1] = 1;
-                    break;
-                case 'K':
-                    GAMESTATE.players[0].castling_rights[0] = 1;
-                    break;
-                case 'Q':
-                    GAMESTATE.players[0].castling_rights[1] = 1;
-                    break;
-                }
-                break;
-            case 4:
-                if(s[i+1] - '6' == 0){
-                    GAMESTATE.enPassant_square = rankFileToBoard(4,character - 'a');
-                }else if(s[i+1] - '3' == 0){
-                    GAMESTATE.enPassant_square = rankFileToBoard(3,character - 'a');
-                }
-                break;
-        }
-        i++;
-    }
-    calculate_eval_scores();
-}
-// Testing different samples
-void test_samples(){
-    char *fen_samples[] = {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", //starting position 1
-                        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -", //Kiwipette 2
-                        "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", // Position 3 (Endgame-ish)
-                        "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", // Position 4
-                        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", // Position 5 (The talkchess position)
-                        "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10"}; // Position 6
-    int num_samples = 6;
-
-    for(int i = 0; i < num_samples; i++){
-        parse_fen(fen_samples[i]);
-        printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(4));
-        printBoard();
-        generate_ai_move(4);
-        printBoard();
-        printf("NO: %d DONEEEE\n\n", i+1);
-
-        memset(board, 0, sizeof(board)); // Clearing the board
-    }
-}
-
 /* Lookup function includes all the moves that a piece can do ( excluding the Special moves ) */
 void initLookup()
 {
@@ -213,15 +82,17 @@ void initLookup()
     }
 }
 
-int main()
+int main(int argv, char *argc[])
 {
-    srand(time(NULL));
-
-    int mode = 0; // 0 for Testing(NPS and FEN) and 1 against AI
-    int player_yours = 1; // 0 for white and 1 for black (When playing aganst AI)
+    int mode = 1;
+    int player_yours = 0; // 0 for white and 1 for black (When playing aganst AI)
     initLookup();
 
-    
+    if(argv != 2) return 0;
+    if(argc[1][0] != '0' && argc[1][0] != '1') return 0;
+
+    player_yours = argc[1][0] - '0';
+
     if(mode){
         char s[16];
         initGameState();
@@ -229,8 +100,6 @@ int main()
         //Play Against AI
         while (1)
         {
-            printf("PERFT FUNCTION(DEBUG) NODES : %llu\n",perft(4));
-            printf("Square Score: %d Piece Score : %d\n",GAMESTATE.square_score,GAMESTATE.piece_score);
             int state = evaluate_checkmate_stalemate();
             if(state == 1){
                 printf("CHECKMATE\n");
@@ -245,12 +114,10 @@ int main()
                 scanf("%s", s);
                 make_move(s);
             }else{
-                generate_ai_move(4);
+                generate_ai_move(-1000000,1000000,5,0);
             }
             
         }
-    }else{
-        test_samples();
     }
     
     return 0;

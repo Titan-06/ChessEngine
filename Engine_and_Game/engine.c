@@ -151,7 +151,8 @@ void calculate_eval_scores(){
     }
 }
 
-/* Nega maxxing*/
+
+/* The Evaluation Function , Materials are REALLY important */
 int evaluate_score(){
     int square_wt = 5;
     int piece_wt = 100;
@@ -162,24 +163,101 @@ int evaluate_score(){
 
     return eval;
 }
-int negamax( int depth ){
 
+/* Most functions below here foloow the more or less the same pattern */
+
+// Quisecence Search
+int quisece(int alpha, int beta, int qdepth){ // Adding a qdepth to prevent move explosion
     nodes++;
 
-    if(depth == 0){
-        calculate_eval_scores(); 
-        return evaluate_score();
+    calculate_eval_scores();
+    int static_eval = evaluate_score();
+
+    int best_value = static_eval;
+    if(best_value >= beta){
+        return best_value;
     }
-    int max = -999999;
+    // Delta pruning 
+    int big_delta = 9500; // The weight of queen (Dont look further when already down a lot of points)
+    if(static_eval < alpha - big_delta){
+        return alpha;
+    }
+
+    if(best_value > alpha){
+        alpha = best_value;
+    }
+
+    if(qdepth <= 0){
+        return alpha;
+    }
+
     int score = -999999;
     int src_moves[256];
     int des_moves[256];
-
     struct gameState temp_gamestate;
     u_int8_t temp_board[128];
 
 
-    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player);
+    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player,1);
+    for(int i = 0; i < n_moves; i++){
+
+        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+        int player_this_move = GAMESTATE.current_player;
+
+        save_last_move(&temp_gamestate,temp_board);
+        movePiece(src_moves[i],des_moves[i]);
+
+        if(pawn_promotion){
+                board[des_moves[i]] = (QUEEN | player_this_move);
+                score = -quisece(-beta,-alpha,qdepth-1);
+                if(score >= beta){
+                    undo_last_move(&temp_gamestate,temp_board);
+                    return score;
+                }
+                if(score > best_value){
+                    best_value = score;
+                }
+                if(score >= alpha){
+                    alpha = score;
+                }
+            
+        }else{
+            score = -quisece(-beta,-alpha,qdepth-1);
+            if(score >= beta){
+                undo_last_move(&temp_gamestate,temp_board);
+                return score;
+            }
+            if(score > best_value){
+                best_value = score;
+            }
+            if(score >= alpha){
+                alpha = score;
+            }
+        }
+       
+        undo_last_move(&temp_gamestate,temp_board);
+    }
+    return best_value;
+}
+
+// Negamax Framework -- Alpha beta pruning 
+int alphaBeta(int alpha, int beta, int depth){
+    nodes++;
+
+    if(depth == 0){
+        return quisece(alpha,beta,2);
+    }
+    
+    int bestValue = -1000000;
+    int score = -999999;
+    int src_moves[256];
+    int des_moves[256];
+
+
+    struct gameState temp_gamestate;
+    u_int8_t temp_board[128];
+
+    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player,0);
     if(n_moves == 0){
         int player = GAMESTATE.current_player;
         int opponent = (player == 1) ? 2: 1;
@@ -188,12 +266,9 @@ int negamax( int depth ){
         }
         return 0; // Stalemate
     }
-
-    for(int i = 0; i < n_moves ; i++){
-
-        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+    for(int i = 0; i < n_moves; i++){
+        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);;
         int player_this_move = GAMESTATE.current_player;
-
         save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
 
@@ -201,72 +276,100 @@ int negamax( int depth ){
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
             for(int j = 0 ; j < 4; j++){
                 board[des_moves[i]] = (pieces[j] | player_this_move);
-                score = -negamax(depth - 1);
-                if(score > max) max = score;
+                score = -alphaBeta(-beta,-alpha,depth-1);
+                if(score > bestValue){
+                    bestValue = score;
+
+                    if(score > alpha) alpha = score;
+
+                }
+                if(score >= beta){
+                    undo_last_move(&temp_gamestate,temp_board);
+                    return bestValue;
+                }
             }
         }else{
-            score = -negamax(depth - 1);
-            if(score > max) max = score;
+            score = -alphaBeta(-beta,-alpha,depth - 1);
+            if(score > bestValue){
+                bestValue = score;
+
+                if(score > alpha) alpha = score;
+
+            }
+            if(score >= beta){
+                undo_last_move(&temp_gamestate,temp_board);
+                return bestValue;
+            }
         }
        
         undo_last_move(&temp_gamestate,temp_board);
-        
     }
-    return max;
-}
+    return bestValue;
 
-void generate_ai_move(int depth){
+}
+void generate_ai_move(int alpha,int beta,int depth, int playing_or_testing){ // 0 for testing , 1 for Playing
     int src_moves[256];
     int des_moves[256];
 
-    int max = -1000000;
+    int bestValue = -1000000;
     int score = -999999;
 
     int max_src_move = -1;
     int max_des_move = -1;
-    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player);
+    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player,0);
     int promotion_piece = 0; // 0 for none, any other for whatever piece it was promoted to
     
     struct gameState temp_gamestate;
     u_int8_t temp_board[128];
     
-    
-    clock_t start_time = clock();
+    // For testing part
+    clock_t start_time = clock();;
     nodes = 0;
 
-    for(int i = 0 ; i < n_moves; i++){
-
-        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
+    for(int i = 0; i < n_moves; i++){
+        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);;
         int player_this_move = GAMESTATE.current_player;
-
         save_last_move(&temp_gamestate,temp_board);
         movePiece(src_moves[i],des_moves[i]);
+
         if(pawn_promotion){
             int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
             for(int j = 0 ; j < 4; j++){
                 board[des_moves[i]] = (pieces[j] | player_this_move);
-                score = -negamax(depth - 1);
-                if(score > max){ 
-                    promotion_piece = pieces[j];
-                    max = score;
+                score = -alphaBeta(-beta,-alpha,depth-1);
+                if(score > bestValue){
+                    bestValue = score;
                     max_src_move = src_moves[i];
                     max_des_move = des_moves[i];
-                };
+                    promotion_piece = pieces[j];
+                    if(score > alpha) alpha = score;
+
+                }
+                if(score >= beta){
+                    undo_last_move(&temp_gamestate,temp_board);
+                    break;
+                }
             }
         }else{
-            score = -negamax(depth - 1);
-            if(score > max){
-                promotion_piece = 0; 
-                max = score;
-                    max_src_move = src_moves[i];
-                    max_des_move = des_moves[i];
-                };
-            }
-        
-        undo_last_move(&temp_gamestate,temp_board); 
-    }
+            score = -alphaBeta(-beta,-alpha,depth-1);
+            if(score > bestValue){
+                bestValue = score;
+                max_src_move = src_moves[i];
+                max_des_move = des_moves[i];
+                promotion_piece = 0;
+                if(score > alpha) alpha = score;
 
+            }
+            if(score >= beta){
+                undo_last_move(&temp_gamestate,temp_board);
+                break;
+            }
+        }
+       
+        undo_last_move(&temp_gamestate,temp_board);
+    }
     clock_t end_time = clock();
+        
     double time_spent = (double)(end_time - start_time) / CLOCKS_PER_SEC;
     printf("Move found: Nodes Searched: %llu Time spend:%.3f NPS: %.5f \n",nodes,time_spent,nodes/time_spent);
 
