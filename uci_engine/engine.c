@@ -151,7 +151,7 @@ void calculate_eval_scores(){
     }
 }
 
-/* Nega maxxing*/
+// Evaluation Function
 int evaluate_score(){
     int square_wt = 5;
     int piece_wt = 100;
@@ -162,59 +162,7 @@ int evaluate_score(){
 
     return eval;
 }
-int negamax( int depth ){
-
-    nodes++;
-
-    if(depth == 0){
-        calculate_eval_scores(); 
-        return evaluate_score();
-    }
-    int max = -999999;
-    int score = -999999;
-    int src_moves[256];
-    int des_moves[256];
-
-    struct gameState temp_gamestate;
-    u_int8_t temp_board[128];
-
-
-    int n_moves = generate_legal_moves(src_moves,des_moves,GAMESTATE.current_player);
-    if(n_moves == 0){
-        int player = GAMESTATE.current_player;
-        int opponent = (player == 1) ? 2: 1;
-        if(check_attacked(GAMESTATE.players[player -1].kingSquare,opponent) != -1){
-            return -900000 - depth; // faster checkmates are preferrred
-        }
-        return 0; // Stalemate
-    }
-
-    for(int i = 0; i < n_moves ; i++){
-
-        int pawn_promotion = pawn_promotion_condition(src_moves[i],des_moves[i]);
-        int player_this_move = GAMESTATE.current_player;
-
-        save_last_move(&temp_gamestate,temp_board);
-        movePiece(src_moves[i],des_moves[i]);
-
-        if(pawn_promotion){
-            int pieces[] = {QUEEN,KNIGHT,ROOK,BISHOP};
-            for(int j = 0 ; j < 4; j++){
-                board[des_moves[i]] = (pieces[j] | player_this_move);
-                score = -negamax(depth - 1);
-                if(score > max) max = score;
-            }
-        }else{
-            score = -negamax(depth - 1);
-            if(score > max) max = score;
-        }
-       
-        undo_last_move(&temp_gamestate,temp_board);
-        
-    }
-    return max;
-}
-
+/* Negamax with Alpha beta Pruning*/
 int alphaBeta(int alpha, int beta, int depth){
     nodes++;
 

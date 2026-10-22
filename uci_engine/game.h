@@ -24,10 +24,6 @@ int pawn_promotion_condition(int src,int des);
 
 /* Genrating legal moves */
 int generate_legal_moves(int src_moves[],int des_moves[],int player);
-
-/* Perft(DEBUG) function */
-unsigned long long int perft(int depth);
-
 int has_legal_move(int player_num);
 
 /* Helper functions to translate the board */
