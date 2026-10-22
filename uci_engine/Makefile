@@ -2,7 +2,7 @@ CC = gcc
 
 CFLAGS = -O2 -Wall 
 
-TARGET = main
+TARGET = v1_negamax
 
 SRCS = main.c defs.c game.c engine.c
 
