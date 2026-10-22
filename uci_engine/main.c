@@ -111,7 +111,8 @@ void parse_fen(char *s){
     calculate_eval_scores();
 }
 // Testing different samples
-void test_samples(){
+void test_samples(int depth){
+    // The position used are from chess programming wiki-- Perft_Results
     char *fen_samples[] = {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", //starting position 1
                         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -", //Kiwipette 2
                         "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", // Position 3 (Endgame-ish)
@@ -123,7 +124,7 @@ void test_samples(){
     for(int i = 0; i < num_samples; i++){
         printf("Starting %d position ~~~~",i+1);
         parse_fen(fen_samples[i]);
-        generate_ai_move(-1000000,1000000,7,0);
+        generate_ai_move(-1000000,1000000,depth,0);
         printf("NO: %d DONEEEE\n\n", i+1);
 
         memset(board, 0, sizeof(board)); // Clearing the board
@@ -230,8 +231,8 @@ void uci_loop()
 
         if (strcmp(line, "uci") == 0)
         {
-            printf("id name MyEngine\n");
-            printf("id author Student\n");
+            printf("id name v4_quiesce\n");
+            printf("id author Titan\n");
             printf("uciok\n");
             fflush(stdout);
         }
@@ -250,7 +251,7 @@ void uci_loop()
         }
         else if (strncmp(line, "go", 2) == 0)
         {
-            int depth = 4; // Default depth if not specified
+            int depth = 5; // Default depth if not specified
             char *depth_ptr = strstr(line, "depth");
             if (depth_ptr)
             {
@@ -272,7 +273,7 @@ int main(int argc, char * argv[])
     initLookup();
 
     if(argc == 2 && !strcasecmp("test",argv[1])){
-        test_samples();
+        test_samples(5); // Do at whatever depth you want 
         return 0;
     }
 
