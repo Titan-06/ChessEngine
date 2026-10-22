@@ -231,8 +231,8 @@ void uci_loop()
 
         if (strcmp(line, "uci") == 0)
         {
-            printf("id name MyEngine\n");
-            printf("id author Student\n");
+            printf("id name v3_mvvlva\n");
+            printf("id author Titan\n");
             printf("uciok\n");
             fflush(stdout);
         }
