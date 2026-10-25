@@ -17,7 +17,7 @@ The repository contains two folders: `Engine_and_Game` for playing against Menso
 
 ## Playing Strength
 
-Menso played 400 games against Stockfish at Elo limits of 1400, 1600, 1800, and 2000, using a fixed depth(piles) of 5. It scored **50% against the Stockfish 1800 configuration**.
+Menso played 400 games against Stockfish at Elo limits of 1400, 1600, 1800, and 2000, using a fixed search depth(plies) of 5. It scored **50% against the Stockfish 1800 configuration**.
 
 The matches used `openings.pgn` to provide opening positions.
 
