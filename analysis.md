@@ -2,7 +2,7 @@
 
 Menso is a chess engine I wrote in C ([repository](https://github.com/Titan-06/ChessEngine)). This doc goes through four search techniques I added to it, how each one changed the numbers on six standard positions, and how the final engine does in actual games.
 
-**A longer and more casual article on the analysis can be found [here](#). This analysis is a condensed formal version of that original write-up and it's done so using AI. The measurements and interpretations are based on my experiments and remain the same for both, still I have reviewed this analysis against the original write-up.**
+**A longer and more casual article on the analysis can be found [here](https://titan-06.github.io/blog/analysis-chess-engine/). This analysis is a condensed formal version of that original write-up and it's done so using AI. The measurements and interpretations are based on my experiments and remain the same for both, still I have reviewed this analysis against the original write-up.**
 
 For every technique I look at why I added it, what it did to the metrics, and my guesses about why the numbers came out the way they did. Where a guess is still untested, I say so.
 
